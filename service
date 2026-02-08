@@ -1,0 +1,225 @@
+import { useState, useEffect, useRef } from "react";
+
+const UK_LOCATIONS = [
+  "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
+  "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
+  "Chelmsford","Cheltenham","Chester","Colchester","Coventry","Crawley","Darlington","Derby",
+  "Doncaster","Dover","Dundee","Durham","Edinburgh","Exeter","Glasgow","Gloucester",
+  "Grimsby","Guildford","Halifax","Harrogate","Huddersfield","Hull","Inverness","Ipswich",
+  "Keighley","Lancaster","Leeds","Leicester","Lincoln","Liverpool","London","Luton",
+  "Macclesfield","Manchester","Middlesbrough","Milton Keynes","Newcastle","Northampton",
+  "Norwich","Nottingham","Oldham","Oxford","Perth","Peterborough","Plymouth","Portsmouth",
+  "Preston","Reading","Rochdale","Rotherham","Saltaire","Scarborough","Sheffield","Shipley",
+  "Shrewsbury","Skipton","Southampton","Southend","St Albans","Stockport","Stoke-on-Trent",
+  "Sunderland","Swansea","Swindon","Taunton","Wakefield","Walsall","Warrington","Wigan",
+  "Winchester","Wolverhampton","Worcester","York"
+];
+
+export default function ShopFinder() {
+  const [location, setLocation] = useState("");
+  const [filterText, setFilterText] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [keywords, setKeywords] = useState("");
+  const [results, setResults] = useState(null);
+  const dropdownRef = useRef(null);
+
+  const filtered = UK_LOCATIONS.filter(l =>
+    l.toLowerCase().includes(filterText.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSearch = () => {
+    if (!keywords.trim()) return;
+    setResults({ q: keywords.trim(), loc: location });
+  };
+
+  const ResultCard = ({ icon, label, color, url, description }) => (
+    <a href={url} target="_blank" rel="noopener noreferrer" style={{
+      display: "flex", alignItems: "center", gap: 16,
+      background: "#fff", borderRadius: 10, padding: "16px 20px",
+      border: `1px solid ${color}30`, borderLeft: `4px solid ${color}`,
+      textDecoration: "none", color: "#1a1a2e",
+      transition: "box-shadow 0.2s",
+    }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+    >
+      <span style={{ fontSize: 28, flexShrink: 0 }}>{icon}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: "#888" }}>{description}</div>
+      </div>
+      <span style={{ marginLeft: "auto", fontSize: 18, color: "#ccc", flexShrink: 0 }}>→</span>
+    </a>
+  );
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(160deg, #faf8f4 0%, #f0ece4 100%)",
+      fontFamily: "'DM Sans', sans-serif"
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+      {/* Header */}
+      <div style={{
+        background: "#1a1a2e", padding: "40px 20px 36px", textAlign: "center",
+        borderBottom: "3px solid #c9a96e"
+      }}>
+        <div style={{ fontSize: 36, marginBottom: 8 }}>🛍️</div>
+        <h1 style={{
+          fontFamily: "'Playfair Display', serif", fontSize: 30,
+          color: "#e8d5b7", margin: "0 0 6px", letterSpacing: "-0.5px"
+        }}>ShopFinder UK</h1>
+        <p style={{ color: "rgba(232,213,183,0.5)", fontSize: 14, margin: 0 }}>
+          Search local shops, Amazon &amp; Etsy in one place
+        </p>
+      </div>
+
+      {/* Search Area */}
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "28px 20px" }}>
+
+        {/* Location */}
+        <div ref={dropdownRef} style={{ position: "relative", marginBottom: 12 }}>
+          <label style={{
+            fontSize: 11, fontWeight: 700, color: "#999",
+            textTransform: "uppercase", letterSpacing: "0.5px",
+            display: "block", marginBottom: 6
+          }}>Your location</label>
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              placeholder="Select a town or city..."
+              value={showDropdown ? filterText : location}
+              onChange={e => { setFilterText(e.target.value); setShowDropdown(true); }}
+              onFocus={() => { setShowDropdown(true); setFilterText(""); }}
+              style={{
+                width: "100%", padding: "13px 40px 13px 16px", borderRadius: 10,
+                border: "2px solid #e0dbd2", fontSize: 15, outline: "none",
+                boxSizing: "border-box", background: "#fff"
+              }}
+            />
+            {location && !showDropdown && (
+              <span onClick={() => { setLocation(""); setFilterText(""); }}
+                style={{
+                  position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+                  cursor: "pointer", color: "#bbb", fontSize: 18, lineHeight: 1
+                }}>×</span>
+            )}
+          </div>
+          {showDropdown && (
+            <div style={{
+              position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+              background: "#fff", borderRadius: "0 0 10px 10px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.1)", maxHeight: 220,
+              overflowY: "auto", border: "1px solid #e0dbd2", borderTop: "none"
+            }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: "12px 16px", color: "#aaa", fontSize: 13 }}>No matches</div>
+              ) : filtered.map(loc => (
+                <div key={loc}
+                  onClick={() => { setLocation(loc); setFilterText(""); setShowDropdown(false); }}
+                  style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: "#333" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#faf6ee"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                >{loc}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Keywords */}
+        <label style={{
+          fontSize: 11, fontWeight: 700, color: "#999",
+          textTransform: "uppercase", letterSpacing: "0.5px",
+          display: "block", marginBottom: 6
+        }}>What are you looking for?</label>
+        <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+          <input
+            type="text"
+            placeholder="e.g. clothing, pottery, gifts..."
+            value={keywords}
+            onChange={e => setKeywords(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSearch()}
+            style={{
+              flex: 1, padding: "13px 16px", borderRadius: 10,
+              border: "2px solid #e0dbd2", fontSize: 15, outline: "none",
+              background: "#fff"
+            }}
+          />
+          <button onClick={handleSearch} style={{
+            padding: "13px 28px", borderRadius: 10, border: "none",
+            background: "#1a1a2e", color: "#e8d5b7", fontSize: 15,
+            fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap"
+          }}>Search</button>
+        </div>
+
+        {/* Results */}
+        {results && (
+          <div>
+            <h2 style={{
+              fontFamily: "'Playfair Display', serif", fontSize: 20,
+              color: "#1a1a2e", margin: "0 0 4px"
+            }}>Results for "{results.q}"</h2>
+            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 16px" }}>
+              {results.loc ? `Showing shops in ${results.loc} and online` : "Showing online results — select a location for local shops"}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {results.loc && (
+                <>
+                  <ResultCard
+                    icon="📍"
+                    label={`${results.q} shops in ${results.loc}`}
+                    color="#2ecc71"
+                    url={`https://www.google.com/search?q=${encodeURIComponent(results.q + " shops in " + results.loc)}`}
+                    description="Google search — find local shop websites"
+                  />
+                  <ResultCard
+                    icon="🗺️"
+                    label={`${results.q} near ${results.loc} on Maps`}
+                    color="#3498db"
+                    url={`https://www.google.com/maps/search/${encodeURIComponent(results.q + " " + results.loc)}`}
+                    description="See shops on Google Maps with reviews and directions"
+                  />
+                </>
+              )}
+              <ResultCard
+                icon="📦"
+                label={`${results.q} on Amazon.co.uk`}
+                color="#ff9900"
+                url={`https://www.amazon.co.uk/s?k=${encodeURIComponent(results.q)}`}
+                description="Browse products and shops on Amazon UK"
+              />
+              <ResultCard
+                icon="🎨"
+                label={`${results.q} on Etsy`}
+                color="#f1641e"
+                url={`https://www.etsy.com/uk/search?q=${encodeURIComponent(results.q)}`}
+                description="Discover handmade and independent sellers on Etsy UK"
+              />
+            </div>
+          </div>
+        )}
+
+        {!results && (
+          <div style={{ textAlign: "center", padding: "40px 20px" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+            <p style={{ margin: 0, fontSize: 14, color: "#bbb" }}>
+              Pick a location and enter what you're looking for
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
