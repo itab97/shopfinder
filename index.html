@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopFinder UK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #faf8f4 0%, #f0ece4 100%); min-height: 100vh; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .header { background: #1a1a2e; padding: 40px 20px 36px; text-align: center; border-bottom: 3px solid #c9a96e; }
+        .header h1 { font-family: 'Playfair Display', serif; font-size: 30px; color: #e8d5b7; margin: 0 0 6px; letter-spacing: -0.5px; }
+        .header p { color: rgba(232,213,183,0.5); font-size: 14px; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 28px 20px; }
+
+        .field-label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+
+        .dropdown-wrapper { position: relative; margin-bottom: 12px; }
+        .dropdown-input {
+            width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px;
+            border: 2px solid #e0dbd2; font-size: 15px; outline: none;
+            background: #fff; font-family: 'DM Sans', sans-serif;
+        }
+        .dropdown-clear {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            cursor: pointer; color: #bbb; font-size: 18px; line-height: 1;
+            background: none; border: none; display: none;
+        }
+        .dropdown-list {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+            background: #fff; border-radius: 0 0 10px 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-height: 220px;
+            overflow-y: auto; border: 1px solid #e0dbd2; border-top: none; display: none;
+        }
+        .dropdown-list.open { display: block; }
+        .dropdown-item { padding: 10px 16px; cursor: pointer; font-size: 14px; color: #333; }
+        .dropdown-item:hover { background: #faf6ee; }
+        .dropdown-empty { padding: 12px 16px; color: #aaa; font-size: 13px; }
+
+        .search-btn {
+            width: 100%; padding: 13px 28px; border-radius: 10px; border: none;
+            background: #1a1a2e; color: #e8d5b7; font-size: 15px; font-weight: 700;
+            cursor: pointer; margin-bottom: 8px; font-family: 'DM Sans', sans-serif;
+        }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; margin-top: 24px; }
+        .section-icon {
+            font-size: 20px; width: 36px; height: 36px; display: flex;
+            align-items: center; justify-content: center; border-radius: 8px;
+        }
+        .section-title { font-weight: 700; font-size: 15px; color: #1a1a2e; }
+        .section-count { font-size: 12px; color: #aaa; }
+        .spinner {
+            margin-left: auto; width: 18px; height: 18px;
+            border: 2px solid #e0dbd2; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .result-card {
+            display: block; background: #fff; border-radius: 8px; padding: 12px 16px;
+            text-decoration: none; color: #1a1a2e; border: 1px solid #eee;
+            transition: all 0.15s; margin-bottom: 6px;
+        }
+        .result-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); border-color: #d0c9be; }
+        .result-name { font-weight: 600; font-size: 14px; margin-bottom: 3px; line-height: 1.3; }
+        .result-snippet { font-size: 12px; color: #888; line-height: 1.4; }
+        .result-url { font-size: 11px; color: #b0a890; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .empty-state { text-align: center; padding: 40px 20px; }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; color: #bbb; }
+        .no-results { color: #bbb; font-size: 13px; margin: 4px 0 0; padding: 8px 0; }
+        .error-msg { color: #c0392b; font-size: 13px; text-align: center; padding: 12px; }
+
+        .disclosure {
+            font-size: 11px; color: #bbb; text-align: center;
+            margin-top: 32px; padding: 12px 0; border-top: 1px solid #e8e2d8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="font-size: 36px; margin-bottom: 8px;">🛍️</div>
+        <h1>ShopFinder UK</h1>
+        <p>Search local shops, Amazon &amp; Etsy in one place</p>
+    </div>
+
+    <div class="container">
+        <!-- Location -->
+        <div class="dropdown-wrapper" id="locationWrapper">
+            <label class="field-label">Your location</label>
+            <div style="position:relative;">
+                <input type="text" class="dropdown-input" id="locationInput" placeholder="Select a town or city..." autocomplete="off" />
+                <button class="dropdown-clear" id="locationClear">×</button>
+            </div>
+            <div class="dropdown-list" id="locationList"></div>
+        </div>
+
+        <!-- Category -->
+        <div class="dropdown-wrapper" id="categoryWrapper">
+            <label class="field-label">What are you looking for?</label>
+            <div style="position:relative;">
+                <input type="text" class="dropdown-input" id="categoryInput" placeholder="Select a category..." autocomplete="off" />
+                <button class="dropdown-clear" id="categoryClear">×</button>
+            </div>
+            <div class="dropdown-list" id="categoryList"></div>
+        </div>
+
+        <button class="search-btn" id="searchBtn">Search</button>
+
+        <div id="results"></div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="icon">🔍</div>
+            <p>Pick a location and select what you're looking for</p>
+        </div>
+
+        <p class="disclosure">
+            As an Amazon Associate and Etsy Affiliate, we earn from qualifying purchases.
+        </p>
+    </div>
+
+    <script>
+    // =============================================
+    // CONFIGURATION — Update these values
+    // =============================================
+    const WORKER_URL = "https://shopfinder-worker.YOUR-SUBDOMAIN.workers.dev";
+
+    const AMAZON_ASSOCIATE_TAG = "yoursite-21";
+    const AWIN_PUBLISHER_ID = "000000";
+    const AWIN_ETSY_ADVERTISER_ID = "6220";
+    // =============================================
+
+    const CATEGORIES = [
+        "Animals & Pets","Antiques","Arts and Crafts","Bakery","Beauty & Make-up",
+        "Beer, Wine & Spirits","Booksellers","Butcher","Cars & Motorbikes","Charity",
+        "Cheesemonger","Chocolatier","Comics & Manga","Computers and Televisions",
+        "Delicatessen","Fashion & Clothing","Fishmonger","Footwear","Gardening",
+        "Greengrocer","Haberdashery (Sewing & Knitting)","Health Food","Jewellery",
+        "Painting & Photography","Sports & Fitness","Sweets & Confectionary",
+        "Tea and Coffee","Toys & Games","Video Games"
+    ];
+
+    const UK_LOCATIONS = [
+        "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
+        "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
+        "Chelmsford","Cheltenham","Chester","Colchester","Coventry","Crawley","Darlington","Derby",
+        "Doncaster","Dover","Dundee","Durham","Edinburgh","Exeter","Glasgow","Gloucester",
+        "Grimsby","Guildford","Halifax","Harrogate","Huddersfield","Hull","Inverness","Ipswich",
+        "Keighley","Lancaster","Leeds","Leicester","Lincoln","Liverpool","London","Luton",
+        "Macclesfield","Manchester","Middlesbrough","Milton Keynes","Newcastle","Northampton",
+        "Norwich","Nottingham","Oldham","Oxford","Perth","Peterborough","Plymouth","Portsmouth",
+        "Preston","Reading","Rochdale","Rotherham","Saltaire","Scarborough","Sheffield","Shipley",
+        "Shrewsbury","Skipton","Southampton","Southend","St Albans","Stockport","Stoke-on-Trent",
+        "Sunderland","Swansea","Swindon","Taunton","Wakefield","Walsall","Warrington","Wigan",
+        "Winchester","Wolverhampton","Worcester","York"
+    ];
+
+    // Affiliate URL helpers
+    function amazonAffiliateUrl(url) {
+        const sep = url.includes("?") ? "&" : "?";
+        return url + sep + "tag=" + AMAZON_ASSOCIATE_TAG;
+    }
+
+    function etsyAffiliateUrl(url) {
+        return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID +
+               "&awinaffid=" + AWIN_PUBLISHER_ID +
+               "&ued=" + encodeURIComponent(url);
+    }
+
+    // State
+    let selectedLocation = "";
+    let selectedCategory = "";
+    let isSearching = false;
+
+    // Dropdown logic
+    function setupDropdown(inputEl, listEl, clearEl, items, onSelect, getSelected) {
+        function renderList(filter) {
+            const filtered = items.filter(item =>
+                item.toLowerCase().includes(filter.toLowerCase())
+            );
+            listEl.innerHTML = filtered.length === 0
+                ? '<div class="dropdown-empty">No matches</div>'
+                : filtered.map(item => '<div class="dropdown-item">' + item + '</div>').join("");
+            listEl.classList.add("open");
+
+            listEl.querySelectorAll(".dropdown-item").forEach(el => {
+                el.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    onSelect(el.textContent);
+                    inputEl.value = el.textContent;
+                    listEl.classList.remove("open");
+                    clearEl.style.display = "block";
+                });
+            });
+        }
+
+        inputEl.addEventListener("focus", () => {
+            inputEl.value = "";
+            renderList("");
+        });
+
+        inputEl.addEventListener("input", () => {
+            renderList(inputEl.value);
+        });
+
+        inputEl.addEventListener("blur", () => {
+            setTimeout(() => {
+                listEl.classList.remove("open");
+                const sel = getSelected();
+                if (sel) {
+                    inputEl.value = sel;
+                    clearEl.style.display = "block";
+                } else {
+                    inputEl.value = "";
+                    clearEl.style.display = "none";
+                }
+            }, 150);
+        });
+
+        clearEl.addEventListener("click", () => {
+            onSelect("");
+            inputEl.value = "";
+            clearEl.style.display = "none";
+        });
+    }
+
+    setupDropdown(
+        document.getElementById("locationInput"),
+        document.getElementById("locationList"),
+        document.getElementById("locationClear"),
+        UK_LOCATIONS,
+        (val) => { selectedLocation = val; },
+        () => selectedLocation
+    );
+
+    setupDropdown(
+        document.getElementById("categoryInput"),
+        document.getElementById("categoryList"),
+        document.getElementById("categoryClear"),
+        CATEGORIES,
+        (val) => { selectedCategory = val; },
+        () => selectedCategory
+    );
+
+    // Search via Cloudflare Worker
+    async function searchWorker(query, category) {
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query, category })
+            });
+            const data = await response.json();
+            if (data.error) {
+                console.error("Worker error:", data.error);
+                return [];
+            }
+            return data.results || [];
+        } catch (e) {
+            console.error("Search failed:", e);
+            return [];
+        }
+    }
+
+    // Rendering helpers
+    function renderResultCard(r) {
+        return '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer" class="result-card">' +
+            '<div class="result-name">' + escapeHtml(r.name) + '</div>' +
+            '<div class="result-snippet">' + escapeHtml(r.snippet) + '</div>' +
+            '<div class="result-url">' + escapeHtml(r.displayUrl || r.url) + '</div>' +
+            '</a>';
+    }
+
+    function renderSectionHeader(icon, title, color, id) {
+        return '<div class="section-header">' +
+            '<span class="section-icon" style="background:' + color + '15;">' + icon + '</span>' +
+            '<div>' +
+                '<div class="section-title">' + title + '</div>' +
+                '<div class="section-count" id="count-' + id + '">Searching...</div>' +
+            '</div>' +
+            '<div class="spinner" id="spinner-' + id + '" style="border-top-color:' + color + ';"></div>' +
+        '</div>';
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function updateSection(id, count) {
+        const countEl = document.getElementById("count-" + id);
+        const spinnerEl = document.getElementById("spinner-" + id);
+        if (countEl) countEl.textContent = count + " result" + (count !== 1 ? "s" : "") + " found";
+        if (spinnerEl) spinnerEl.remove();
+    }
+
+    // Main search handler
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+        if (!selectedCategory) { alert("Please select a category."); return; }
+        if (isSearching) return;
+
+        isSearching = true;
+        const btn = document.getElementById("searchBtn");
+        btn.disabled = true;
+        document.getElementById("emptyState").style.display = "none";
+
+        const q = selectedCategory;
+        const loc = selectedLocation;
+        const resultsDiv = document.getElementById("results");
+
+        // Build skeleton
+        let html = "";
+        if (loc) {
+            html += renderSectionHeader("📍", "Shops in " + loc, "#2ecc71", "local");
+            html += '<div id="local-results"></div>';
+        }
+        html += renderSectionHeader("🛒", "Online shops", "#8e44ad", "online");
+        html += '<div id="online-results"></div>';
+        resultsDiv.innerHTML = html;
+
+        // Local search
+        if (loc) {
+            searchWorker(q + " shops in " + loc + " UK", "local").then(r => {
+                const mapped = r.map(item => ({
+                    ...item,
+                    displayUrl: "maps.google.com — " + item.name,
+                    url: "https://www.google.com/maps/search/" + encodeURIComponent(item.name + ", " + loc)
+                }));
+                updateSection("local", mapped.length);
+                document.getElementById("local-results").innerHTML = mapped.length > 0
+                    ? mapped.map(renderResultCard).join("")
+                    : '<p class="no-results">No local results found. Try a different category.</p>';
+            });
+        }
+
+        // Amazon
+        const amazonPromise = searchWorker("site:amazon.co.uk/stores " + q, "amazon").then(r => {
+            return r
+                .map(item => {
+                    let url = item.url;
+                    if (!url.startsWith("https://www.amazon.co.uk/stores")) {
+                        const m = url.match(/amazon\.co\.uk\/stores\/([\w\-\/]+)/);
+                        if (m) url = "https://www.amazon.co.uk/stores/" + m[1];
+                    }
+                    return { ...item, url };
+                })
+                .filter(item => item.url.startsWith("https://www.amazon.co.uk/stores"))
+                .map(item => ({
+                    ...item,
+                    displayUrl: item.url,
+                    url: amazonAffiliateUrl(item.url)
+                }));
+        });
+
+        // Etsy
+        const etsyPromise = searchWorker("site:etsy.com/uk/shop " + q, "etsy").then(r => {
+            return r
+                .map(item => {
+                    let url = item.url;
+                    const m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9]+)/);
+                    if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
+                    return { ...item, url };
+                })
+                .filter(item => item.url.startsWith("https://www.etsy.com/uk/shop"))
+                .map(item => ({
+                    ...item,
+                    displayUrl: item.url,
+                    url: etsyAffiliateUrl(item.url)
+                }));
+        });
+
+        // Combine online results
+        Promise.all([amazonPromise, etsyPromise]).then(([amz, ets]) => {
+            const interleaved = [];
+            const max = Math.max(amz.length, ets.length);
+            for (let i = 0; i < max; i++) {
+                if (i < amz.length) interleaved.push(amz[i]);
+                if (i < ets.length) interleaved.push(ets[i]);
+            }
+
+            updateSection("online", interleaved.length);
+            document.getElementById("online-results").innerHTML = interleaved.length > 0
+                ? interleaved.map(renderResultCard).join("")
+                : '<p class="no-results">No online results found.</p>';
+
+            isSearching = false;
+            btn.disabled = false;
+        });
+    });
+    </script>
+</body>
+</html>
