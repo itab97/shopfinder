@@ -1,20 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 
-// ========================================
-// AFFILIATE SETTINGS — Replace with your IDs
-// ========================================
-const AMAZON_ASSOCIATE_TAG = "yoursite-21";     // Get from: affiliate-program.amazon.co.uk
-const AWIN_PUBLISHER_ID = "000000";             // Get from: awin.com (your publisher ID)
-const AWIN_ETSY_ADVERTISER_ID = "6220";         // Etsy's Awin advertiser ID (don't change)
-// ========================================
+const AMAZON_ASSOCIATE_TAG = "yoursite-21";     
+const AWIN_PUBLISHER_ID = "000000";            
+const AWIN_ETSY_ADVERTISER_ID = "6220";         
 
-// Helper: wrap an Amazon URL with affiliate tag
 const amazonAffiliateUrl = (url) => {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}tag=${AMAZON_ASSOCIATE_TAG}`;
 };
 
-// Helper: wrap an Etsy URL in Awin tracking
 const etsyAffiliateUrl = (url) => {
   return `https://www.awin1.com/cread.php?awinmid=${AWIN_ETSY_ADVERTISER_ID}&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`;
 };
