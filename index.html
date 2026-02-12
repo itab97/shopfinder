@@ -1,655 +1,398 @@
-import { useState, useEffect, useRef } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopFinder UK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #faf8f4 0%, #f0ece4 100%); min-height: 100vh; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-const AMAZON_ASSOCIATE_TAG = "yoursite-21";     
-const AWIN_PUBLISHER_ID = "000000";            
-const AWIN_ETSY_ADVERTISER_ID = "6220";         
+        .header { background: #1a1a2e; padding: 40px 20px 36px; text-align: center; border-bottom: 3px solid #c9a96e; }
+        .header h1 { font-family: 'Playfair Display', serif; font-size: 30px; color: #e8d5b7; margin: 0 0 6px; letter-spacing: -0.5px; }
+        .header p { color: rgba(232,213,183,0.5); font-size: 14px; }
 
-const amazonAffiliateUrl = (url) => {
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}tag=${AMAZON_ASSOCIATE_TAG}`;
-};
+        .container { max-width: 600px; margin: 0 auto; padding: 28px 20px; }
 
-const etsyAffiliateUrl = (url) => {
-  return `https://www.awin1.com/cread.php?awinmid=${AWIN_ETSY_ADVERTISER_ID}&awinaffid=${AWIN_PUBLISHER_ID}&ued=${encodeURIComponent(url)}`;
-};
+        .field-label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
 
-const CATEGORIES = [
-  "Animals & Pets","Antiques","Arts and Crafts","Bakery","Beauty & Make-up",
-  "Beer, Wine & Spirits","Booksellers","Butcher","Cars & Motorbikes","Charity",
-  "Cheesemonger","Chocolatier","Comics & Manga","Computers and Televisions",
-  "Delicatessen","Fashion & Clothing","Fishmonger","Footwear","Gardening",
-  "Greengrocer","Haberdashery (Sewing & Knitting)","Health Food","Jewellery",
-  "Painting & Photography","Sports & Fitness","Sweets & Confectionary",
-  "Tea and Coffee","Toys & Games","Video Games"
-];
-
-const UK_LOCATIONS = [
-  "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
-  "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
-  "Chelmsford","Cheltenham","Chester","Colchester","Coventry","Crawley","Darlington","Derby",
-  "Doncaster","Dover","Dundee","Durham","Edinburgh","Exeter","Glasgow","Gloucester",
-  "Grimsby","Guildford","Halifax","Harrogate","Huddersfield","Hull","Inverness","Ipswich",
-  "Keighley","Lancaster","Leeds","Leicester","Lincoln","Liverpool","London","Luton",
-  "Macclesfield","Manchester","Middlesbrough","Milton Keynes","Newcastle","Northampton",
-  "Norwich","Nottingham","Oldham","Oxford","Perth","Peterborough","Plymouth","Portsmouth",
-  "Preston","Reading","Rochdale","Rotherham","Saltaire","Scarborough","Sheffield","Shipley",
-  "Shrewsbury","Skipton","Southampton","Southend","St Albans","Stockport","Stoke-on-Trent",
-  "Sunderland","Swansea","Swindon","Taunton","Wakefield","Walsall","Warrington","Wigan",
-  "Winchester","Wolverhampton","Worcester","York"
-];
-
-const RESULT_LIMIT = 10;
-
-const searchCategory = async (query, category, limit = RESULT_LIMIT) => {
-  const prompts = {
-    local: `Search the web for: ${query}
-
-Return ONLY a JSON array of up to ${limit} real shops or businesses found. Each result must have "name", "url", and "snippet" fields. The "name" should be the actual business name. Example format:
-[{"name":"The Pot Shop","url":"https://example.com","snippet":"Brief description of the shop"}]
-
-Return ONLY the JSON array, no markdown, no backticks, no explanation.`,
-    amazon: `Search the web for: ${query}
-
-Return ONLY a JSON array of up to ${limit} Amazon.co.uk store/brand results. Each result must have "name", "url", and "snippet" fields. URLs MUST be Amazon UK store URLs in the format https://www.amazon.co.uk/stores/StoreName or https://www.amazon.co.uk/stores/page/ID — do not include individual product listing URLs. Example format:
-[{"name":"Store Name","url":"https://www.amazon.co.uk/stores/ExampleStore","snippet":"Brief description of the store"}]
-
-Return ONLY the JSON array, no markdown, no backticks, no explanation.`,
-    etsy: `Search the web for: ${query}
-
-Return ONLY a JSON array of up to ${limit} Etsy UK shop results. Each result must have "name", "url", and "snippet" fields. URLs MUST be Etsy UK shop URLs in the format https://www.etsy.com/uk/shop/ShopName — do not include product listing URLs. Example format:
-[{"name":"Shop Name","url":"https://www.etsy.com/uk/shop/ExampleShop","snippet":"Brief description of the shop"}]
-
-Return ONLY the JSON array, no markdown, no backticks, no explanation.`
-  };
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        messages: [{ role: "user", content: prompts[category] }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }]
-      })
-    });
-    const data = await response.json();
-    const text = data.content
-      .filter(b => b.type === "text")
-      .map(b => b.text)
-      .join("");
-    const clean = text.replace(/```json|```/g, "").trim();
-    const results = JSON.parse(clean);
-    return results.slice(0, limit);
-  } catch (e) {
-    console.error(`Search failed for ${category}:`, e);
-    return [];
-  }
-};
-
-// Geocode a shop using OpenStreetMap's Nominatim (free, 1 req/sec)
-const geocodeShop = async (name, city) => {
-  try {
-    const query = encodeURIComponent(`${name}, ${city}, UK`);
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-      { headers: { "User-Agent": "ShopFinderUK/1.0" } }
-    );
-    const data = await res.json();
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (e) { console.error("Geocode failed:", e); }
-  return null;
-};
-
-// Convert lat/lng to an OpenStreetMap tile image URL
-const getTileUrl = (lat, lng, zoom = 16) => {
-  const n = Math.pow(2, zoom);
-  const x = Math.floor((lng + 180) / 360 * n);
-  const latRad = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
-  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
-};
-
-// Small delay helper for rate-limiting Nominatim
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
-
-const PhysicalResultCard = ({ name, url, snippet, coords }) => (
-  <a href={url} target="_blank" rel="noopener noreferrer" style={{
-    display: "flex", gap: 12, background: "#fff", borderRadius: 8,
-    padding: "10px 12px", textDecoration: "none", color: "#1a1a2e",
-    border: "1px solid #eee", transition: "all 0.15s", alignItems: "center",
-  }}
-    onMouseEnter={e => {
-      e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.07)";
-      e.currentTarget.style.borderColor = "#d0c9be";
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.boxShadow = "none";
-      e.currentTarget.style.borderColor = "#eee";
-    }}
-  >
-    {coords ? (
-      <img
-        src={getTileUrl(coords.lat, coords.lng)}
-        alt={`Map near ${name}`}
-        style={{
-          width: 72, height: 72, borderRadius: 6, objectFit: "cover",
-          flexShrink: 0, background: "#f0ece4"
-        }}
-      />
-    ) : (
-      <div style={{
-        width: 72, height: 72, borderRadius: 6, background: "#f0ece4",
-        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center"
-      }}>
-        <span style={{ fontSize: 22, opacity: 0.4 }}>📍</span>
-      </div>
-    )}
-    <div style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, lineHeight: 1.3 }}>{name}</div>
-      <div style={{
-        fontSize: 12, color: "#888", lineHeight: 1.4,
-        overflow: "hidden", textOverflow: "ellipsis",
-        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
-      }}>{snippet}</div>
-    </div>
-  </a>
-);
-
-const ResultCard = ({ name, url, snippet }) => (
-  <a href={url} target="_blank" rel="noopener noreferrer" style={{
-    display: "block", background: "#fff", borderRadius: 8,
-    padding: "12px 16px", textDecoration: "none", color: "#1a1a2e",
-    border: "1px solid #eee", transition: "all 0.15s",
-  }}
-    onMouseEnter={e => {
-      e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.07)";
-      e.currentTarget.style.borderColor = "#d0c9be";
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.boxShadow = "none";
-      e.currentTarget.style.borderColor = "#eee";
-    }}
-  >
-    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3, lineHeight: 1.3 }}>{name}</div>
-    <div style={{ fontSize: 12, color: "#888", lineHeight: 1.4 }}>{snippet}</div>
-    <div style={{
-      fontSize: 11, color: "#b0a890", marginTop: 4, overflow: "hidden",
-      textOverflow: "ellipsis", whiteSpace: "nowrap"
-    }}>{url}</div>
-  </a>
-);
-
-const SectionHeader = ({ icon, title, color, count, loading }) => (
-  <div style={{
-    display: "flex", alignItems: "center", gap: 10, marginBottom: 10, marginTop: 24
-  }}>
-    <span style={{
-      fontSize: 20, width: 36, height: 36, display: "flex",
-      alignItems: "center", justifyContent: "center",
-      background: `${color}15`, borderRadius: 8
-    }}>{icon}</span>
-    <div>
-      <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>{title}</div>
-      <div style={{ fontSize: 12, color: "#aaa" }}>
-        {loading ? "Searching..." : `${count} result${count !== 1 ? "s" : ""} found`}
-      </div>
-    </div>
-    {loading && (
-      <div style={{
-        marginLeft: "auto", width: 18, height: 18,
-        border: "2px solid #e0dbd2", borderTopColor: color,
-        borderRadius: "50%",
-        animation: "spin 0.8s linear infinite"
-      }} />
-    )}
-  </div>
-);
-
-export default function ShopFinder() {
-  const [location, setLocation] = useState("");
-  const [filterText, setFilterText] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [keywords, setKeywords] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [searchMode, setSearchMode] = useState("category"); // "category" or "name"
-  const [shopName, setShopName] = useState("");
-  const [shopType, setShopType] = useState(""); // "physical" or "online"
-  const [localResults, setLocalResults] = useState(null);
-  const [amazonResults, setAmazonResults] = useState(null);
-  const [etsyResults, setEtsyResults] = useState(null);
-  const [loadingLocal, setLoadingLocal] = useState(false);
-  const [loadingAmazon, setLoadingAmazon] = useState(false);
-  const [loadingEtsy, setLoadingEtsy] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const dropdownRef = useRef(null);
-  const categoryRef = useRef(null);
-
-  const filteredCategories = CATEGORIES.filter(c =>
-    c.toLowerCase().includes(categoryFilter.toLowerCase())
-  );
-
-  const filtered = UK_LOCATIONS.filter(l =>
-    l.toLowerCase().includes(filterText.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-      if (categoryRef.current && !categoryRef.current.contains(e.target)) {
-        setShowCategoryDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const isLoading = loadingLocal || loadingAmazon || loadingEtsy;
-
-  const searchTerm = searchMode === "category" ? keywords.trim() : shopName.trim();
-
-  const handleSearch = async () => {
-    if (!searchTerm || !shopType) return;
-    if (shopType === "physical" && !location) return;
-
-    const q = searchTerm;
-    const loc = location;
-
-    setHasSearched(true);
-    setLocalResults(null);
-    setAmazonResults(null);
-    setEtsyResults(null);
-
-    if (shopType === "physical") {
-      // Local shops only
-      setLoadingLocal(true);
-      searchCategory(`${q} shops in ${loc} UK`, "local").then(async r => {
-        const mapped = r.map(item => ({
-          ...item,
-          coords: null,
-          url: `https://www.google.com/maps/search/${encodeURIComponent(item.name + ", " + loc)}`
-        }));
-        setLocalResults(mapped);
-        setLoadingLocal(false);
-
-        // Geocode each result in background (Nominatim: 1 req/sec)
-        for (let i = 0; i < mapped.length; i++) {
-          const coords = await geocodeShop(mapped[i].name, loc);
-          if (coords) {
-            setLocalResults(prev => prev ? prev.map((item, idx) =>
-              idx === i ? { ...item, coords } : item
-            ) : prev);
-          }
-          if (i < mapped.length - 1) await delay(1100);
+        .dropdown-wrapper { position: relative; margin-bottom: 12px; }
+        .dropdown-input {
+            width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px;
+            border: 2px solid #e0dbd2; font-size: 15px; outline: none;
+            background: #fff; font-family: 'DM Sans', sans-serif;
         }
-      });
-    } else {
-      // Online shops: Amazon (5) + Etsy (5) = 10 total
-      setLoadingAmazon(true);
-      searchCategory(`site:amazon.co.uk/stores ${q}`, "amazon", Math.floor(RESULT_LIMIT / 2)).then(r => {
-        const filtered = r
-          .map(item => {
-            let url = item.url;
-            if (!url.startsWith("https://www.amazon.co.uk/stores")) {
-              const storeMatch = url.match(/amazon\.co\.uk\/stores\/([\w\-\/]+)/);
-              if (storeMatch) {
-                url = `https://www.amazon.co.uk/stores/${storeMatch[1]}`;
-              }
-            }
-            return { ...item, url };
-          })
-          .filter(item => item.url.startsWith("https://www.amazon.co.uk/stores"))
-          .map(item => ({ ...item, url: amazonAffiliateUrl(item.url) }));
-        setAmazonResults(filtered);
-        setLoadingAmazon(false);
-      });
+        .dropdown-clear {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            cursor: pointer; color: #bbb; font-size: 18px; line-height: 1;
+            background: none; border: none; display: none;
+        }
+        .dropdown-list {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+            background: #fff; border-radius: 0 0 10px 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-height: 220px;
+            overflow-y: auto; border: 1px solid #e0dbd2; border-top: none; display: none;
+        }
+        .dropdown-list.open { display: block; }
+        .dropdown-item { padding: 10px 16px; cursor: pointer; font-size: 14px; color: #333; }
+        .dropdown-item:hover { background: #faf6ee; }
+        .dropdown-empty { padding: 12px 16px; color: #aaa; font-size: 13px; }
 
-      setLoadingEtsy(true);
-      searchCategory(`site:etsy.com/uk/shop ${q}`, "etsy", Math.ceil(RESULT_LIMIT / 2)).then(r => {
-        const filtered = r
-          .map(item => {
-            let url = item.url;
-            const shopMatch = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9]+)/);
-            if (shopMatch) {
-              url = `https://www.etsy.com/uk/shop/${shopMatch[1]}`;
-            }
-            return { ...item, url };
-          })
-          .filter(item => item.url.startsWith("https://www.etsy.com/uk/shop"))
-          .map(item => ({ ...item, url: etsyAffiliateUrl(item.url) }));
-        setEtsyResults(filtered);
-        setLoadingEtsy(false);
-      });
-    }
-  };
+        .search-btn {
+            width: 100%; padding: 13px 28px; border-radius: 10px; border: none;
+            background: #1a1a2e; color: #e8d5b7; font-size: 15px; font-weight: 700;
+            cursor: pointer; margin-bottom: 8px; font-family: 'DM Sans', sans-serif;
+        }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  const canSearch = searchTerm && shopType && (shopType === "online" || location);
+        .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; margin-top: 24px; }
+        .section-icon {
+            font-size: 20px; width: 36px; height: 36px; display: flex;
+            align-items: center; justify-content: center; border-radius: 8px;
+        }
+        .section-title { font-weight: 700; font-size: 15px; color: #1a1a2e; }
+        .section-count { font-size: 12px; color: #aaa; }
+        .spinner {
+            margin-left: auto; width: 18px; height: 18px;
+            border: 2px solid #e0dbd2; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
 
-  return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(160deg, #faf8f4 0%, #f0ece4 100%)",
-      fontFamily: "'DM Sans', sans-serif"
-    }}>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        .result-card {
+            display: block; background: #fff; border-radius: 8px; padding: 12px 16px;
+            text-decoration: none; color: #1a1a2e; border: 1px solid #eee;
+            transition: all 0.15s; margin-bottom: 6px;
+        }
+        .result-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); border-color: #d0c9be; }
+        .result-name { font-weight: 600; font-size: 14px; margin-bottom: 3px; line-height: 1.3; }
+        .result-snippet { font-size: 12px; color: #888; line-height: 1.4; }
+        .result-url { font-size: 11px; color: #b0a890; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-      {/* Header */}
-      <div style={{
-        background: "#1a1a2e", padding: "40px 20px 36px", textAlign: "center",
-        borderBottom: "3px solid #c9a96e"
-      }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>🛍️</div>
-        <h1 style={{
-          fontFamily: "'Playfair Display', serif", fontSize: 30,
-          color: "#e8d5b7", margin: "0 0 6px", letterSpacing: "-0.5px"
-        }}>ShopFinder UK</h1>
-        <p style={{ color: "rgba(232,213,183,0.5)", fontSize: 14, margin: 0 }}>
-          Discover independent shops across the UK
-        </p>
-      </div>
+        .empty-state { text-align: center; padding: 40px 20px; }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; color: #bbb; }
+        .no-results { color: #bbb; font-size: 13px; margin: 4px 0 0; padding: 8px 0; }
+        .error-msg { color: #c0392b; font-size: 13px; text-align: center; padding: 12px; }
 
-      {/* Search Area */}
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px" }}>
-
-        {/* Shop Type Toggle */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{
-            fontSize: 11, fontWeight: 700, color: "#999",
-            textTransform: "uppercase", letterSpacing: "0.5px",
-            display: "block", marginBottom: 8
-          }}>Search for</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[
-              { value: "physical", label: "🏪 Physical Shops", sublabel: "Local high street" },
-              { value: "online", label: "🌐 Online Shops", sublabel: "Amazon & Etsy" }
-            ].map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setShopType(opt.value)}
-                style={{
-                  flex: 1, padding: "14px 12px", borderRadius: 10,
-                  border: shopType === opt.value ? "2px solid #1a1a2e" : "2px solid #e0dbd2",
-                  background: shopType === opt.value ? "#1a1a2e" : "#fff",
-                  color: shopType === opt.value ? "#e8d5b7" : "#555",
-                  cursor: "pointer", textAlign: "center",
-                  transition: "all 0.15s"
-                }}
-              >
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{opt.label}</div>
-                <div style={{
-                  fontSize: 11, marginTop: 2,
-                  color: shopType === opt.value ? "rgba(232,213,183,0.6)" : "#aaa"
-                }}>{opt.sublabel}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Location (only show for physical shops) */}
-        {shopType === "physical" && (
-          <div ref={dropdownRef} style={{ position: "relative", marginBottom: 12 }}>
-            <label style={{
-              fontSize: 11, fontWeight: 700, color: "#999",
-              textTransform: "uppercase", letterSpacing: "0.5px",
-              display: "block", marginBottom: 6
-            }}>Your location</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                placeholder="Select a town or city..."
-                value={showDropdown ? filterText : location}
-                onChange={e => { setFilterText(e.target.value); setShowDropdown(true); }}
-                onFocus={() => { setShowDropdown(true); setFilterText(""); }}
-                style={{
-                  width: "100%", padding: "13px 40px 13px 16px", borderRadius: 10,
-                  border: "2px solid #e0dbd2", fontSize: 15, outline: "none",
-                  boxSizing: "border-box", background: "#fff"
-                }}
-              />
-              {location && !showDropdown && (
-                <span onClick={() => { setLocation(""); setFilterText(""); }}
-                  style={{
-                    position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
-                    cursor: "pointer", color: "#bbb", fontSize: 18, lineHeight: 1
-                  }}>×</span>
-              )}
-            </div>
-            {showDropdown && (
-              <div style={{
-                position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
-                background: "#fff", borderRadius: "0 0 10px 10px",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.1)", maxHeight: 220,
-                overflowY: "auto", border: "1px solid #e0dbd2", borderTop: "none"
-              }}>
-                {filtered.length === 0 ? (
-                  <div style={{ padding: "12px 16px", color: "#aaa", fontSize: 13 }}>No matches</div>
-                ) : filtered.map(loc => (
-                  <div key={loc}
-                    onClick={() => { setLocation(loc); setFilterText(""); setShowDropdown(false); }}
-                    style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: "#333" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#faf6ee"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#fff"}
-                  >{loc}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Search By Toggle */}
-        <div style={{ marginBottom: 12 }}>
-          <label style={{
-            fontSize: 11, fontWeight: 700, color: "#999",
-            textTransform: "uppercase", letterSpacing: "0.5px",
-            display: "block", marginBottom: 8
-          }}>Search by</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[
-              { value: "category", label: "Category" },
-              { value: "name", label: "Shop name" }
-            ].map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setSearchMode(opt.value)}
-                style={{
-                  flex: 1, padding: "9px 12px", borderRadius: 8,
-                  border: searchMode === opt.value ? "2px solid #1a1a2e" : "2px solid #e0dbd2",
-                  background: searchMode === opt.value ? "#1a1a2e" : "#fff",
-                  color: searchMode === opt.value ? "#e8d5b7" : "#555",
-                  cursor: "pointer", fontSize: 13, fontWeight: 600,
-                  transition: "all 0.15s"
-                }}
-              >{opt.label}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* Category dropdown (when searchMode is "category") */}
-        {searchMode === "category" && (
-          <div ref={categoryRef} style={{ position: "relative", marginBottom: 12 }}>
-            <label style={{
-              fontSize: 11, fontWeight: 700, color: "#999",
-              textTransform: "uppercase", letterSpacing: "0.5px",
-              display: "block", marginBottom: 6
-            }}>What are you looking for?</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                placeholder="Select a category..."
-                value={showCategoryDropdown ? categoryFilter : keywords}
-                onChange={e => { setCategoryFilter(e.target.value); setShowCategoryDropdown(true); }}
-                onFocus={() => { setShowCategoryDropdown(true); setCategoryFilter(""); }}
-                style={{
-                  width: "100%", padding: "13px 40px 13px 16px", borderRadius: 10,
-                  border: "2px solid #e0dbd2", fontSize: 15, outline: "none",
-                  boxSizing: "border-box", background: "#fff"
-                }}
-              />
-              {keywords && !showCategoryDropdown && (
-                <span onClick={() => { setKeywords(""); setCategoryFilter(""); }}
-                  style={{
-                    position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
-                    cursor: "pointer", color: "#bbb", fontSize: 18, lineHeight: 1
-                  }}>×</span>
-              )}
-            </div>
-            {showCategoryDropdown && (
-              <div style={{
-                position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
-                background: "#fff", borderRadius: "0 0 10px 10px",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.1)", maxHeight: 220,
-                overflowY: "auto", border: "1px solid #e0dbd2", borderTop: "none"
-              }}>
-                {filteredCategories.length === 0 ? (
-                  <div style={{ padding: "12px 16px", color: "#aaa", fontSize: 13 }}>No matches</div>
-                ) : filteredCategories.map(cat => (
-                  <div key={cat}
-                    onClick={() => { setKeywords(cat); setCategoryFilter(""); setShowCategoryDropdown(false); }}
-                    style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: "#333" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#faf6ee"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#fff"}
-                  >{cat}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Shop name text box (when searchMode is "name") */}
-        {searchMode === "name" && (
-          <div style={{ marginBottom: 12 }}>
-            <label style={{
-              fontSize: 11, fontWeight: 700, color: "#999",
-              textTransform: "uppercase", letterSpacing: "0.5px",
-              display: "block", marginBottom: 6
-            }}>Shop name</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                placeholder="e.g. The Chocolate Factory, Bob's Books..."
-                value={shopName}
-                onChange={e => setShopName(e.target.value)}
-                style={{
-                  width: "100%", padding: "13px 40px 13px 16px", borderRadius: 10,
-                  border: "2px solid #e0dbd2", fontSize: 15, outline: "none",
-                  boxSizing: "border-box", background: "#fff"
-                }}
-              />
-              {shopName && (
-                <span onClick={() => setShopName("")}
-                  style={{
-                    position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
-                    cursor: "pointer", color: "#bbb", fontSize: 18, lineHeight: 1
-                  }}>×</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <button onClick={handleSearch}
-          disabled={isLoading || !canSearch}
-          style={{
-            width: "100%", padding: "13px 28px", borderRadius: 10, border: "none",
-            background: "#1a1a2e", color: "#e8d5b7", fontSize: 15,
-            fontWeight: 700, cursor: canSearch && !isLoading ? "pointer" : "default",
-            marginBottom: 8,
-            opacity: (!canSearch || isLoading) ? 0.4 : 1
-          }}>
-          {isLoading ? "Searching..." : "Search"}
-        </button>
-
-        {/* Validation hint */}
-        {!shopType && (
-          <p style={{ fontSize: 12, color: "#c9a96e", textAlign: "center", margin: "4px 0 0" }}>
-            Choose Physical or Online shops above to get started
-          </p>
-        )}
-        {shopType === "physical" && !location && searchTerm && (
-          <p style={{ fontSize: 12, color: "#c9a96e", textAlign: "center", margin: "4px 0 0" }}>
-            Select a location to search for physical shops
-          </p>
-        )}
-
-        {/* Results */}
-        {hasSearched && (
-          <div style={{ marginTop: 16 }}>
-            {/* Physical Shop Results */}
-            {shopType === "physical" && (
-              <>
-                <SectionHeader
-                  icon="🏪" title={`Shops in ${location}`} color="#2ecc71"
-                  count={localResults?.length || 0} loading={loadingLocal}
-                />
-                {localResults && localResults.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {localResults.map((r, i) => (
-                      <PhysicalResultCard key={`local-${i}`} {...r} />
-                    ))}
-                  </div>
-                )}
-                {localResults && localResults.length === 0 && (
-                  <p style={{ color: "#bbb", fontSize: 13, margin: "4px 0 0", padding: "8px 0" }}>
-                    No local results found. Try a different category.
-                  </p>
-                )}
-              </>
-            )}
-
-            {/* Online Shop Results */}
-            {shopType === "online" && (
-              <>
-                <SectionHeader
-                  icon="🌐" title="Online shops" color="#8e44ad"
-                  count={(amazonResults?.length || 0) + (etsyResults?.length || 0)}
-                  loading={loadingAmazon || loadingEtsy}
-                />
-                {(() => {
-                  const amz = (amazonResults || []).map((r, i) => ({ ...r, _key: `amz-${i}` }));
-                  const ets = (etsyResults || []).map((r, i) => ({ ...r, _key: `etsy-${i}` }));
-                  const interleaved = [];
-                  const max = Math.max(amz.length, ets.length);
-                  for (let i = 0; i < max; i++) {
-                    if (i < amz.length) interleaved.push(amz[i]);
-                    if (i < ets.length) interleaved.push(ets[i]);
-                  }
-                  return interleaved.length > 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {interleaved.map(r => <ResultCard key={r._key} {...r} />)}
-                    </div>
-                  ) : (amazonResults && etsyResults) ? (
-                    <p style={{ color: "#bbb", fontSize: 13, margin: "4px 0 0", padding: "8px 0" }}>
-                      No online results found.
-                    </p>
-                  ) : null;
-                })()}
-              </>
-            )}
-          </div>
-        )}
-
-        {!hasSearched && (
-          <div style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-            <p style={{ margin: 0, fontSize: 14, color: "#bbb" }}>
-              Choose a shop type and category to start searching
-            </p>
-          </div>
-        )}
-
-        <p style={{
-          fontSize: 11, color: "#bbb", textAlign: "center",
-          marginTop: 32, padding: "12px 0", borderTop: "1px solid #e8e2d8"
-        }}>
-          As an Amazon Associate and Etsy Affiliate, we earn from qualifying purchases.
-          <br />Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: "#bbb" }}>OpenStreetMap</a> contributors.
-        </p>
-      </div>
+        .disclosure {
+            font-size: 11px; color: #bbb; text-align: center;
+            margin-top: 32px; padding: 12px 0; border-top: 1px solid #e8e2d8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="font-size: 36px; margin-bottom: 8px;">🛍️</div>
+        <h1>ShopFinder UK</h1>
+        <p>Search local shops, Amazon &amp; Etsy in one place</p>
     </div>
-  );
-}
+
+    <div class="container">
+        <!-- Location -->
+        <div class="dropdown-wrapper" id="locationWrapper">
+            <label class="field-label">Your location</label>
+            <div style="position:relative;">
+                <input type="text" class="dropdown-input" id="locationInput" placeholder="Select a town or city..." autocomplete="off" />
+                <button class="dropdown-clear" id="locationClear">×</button>
+            </div>
+            <div class="dropdown-list" id="locationList"></div>
+        </div>
+
+        <!-- Category -->
+        <div class="dropdown-wrapper" id="categoryWrapper">
+            <label class="field-label">What are you looking for?</label>
+            <div style="position:relative;">
+                <input type="text" class="dropdown-input" id="categoryInput" placeholder="Select a category..." autocomplete="off" />
+                <button class="dropdown-clear" id="categoryClear">×</button>
+            </div>
+            <div class="dropdown-list" id="categoryList"></div>
+        </div>
+
+        <button class="search-btn" id="searchBtn">Search</button>
+
+        <div id="results"></div>
+
+        <div class="empty-state" id="emptyState">
+            <div class="icon">🔍</div>
+            <p>Pick a location and select what you're looking for</p>
+        </div>
+
+        <p class="disclosure">
+            As an Amazon Associate and Etsy Affiliate, we earn from qualifying purchases.
+        </p>
+    </div>
+
+    <script>
+    // =============================================
+    // CONFIGURATION — Update these values
+    // =============================================
+    const WORKER_URL = "https://shopfinder-worker.YOUR-SUBDOMAIN.workers.dev";
+
+    const AMAZON_ASSOCIATE_TAG = "yoursite-21";
+    const AWIN_PUBLISHER_ID = "000000";
+    const AWIN_ETSY_ADVERTISER_ID = "6220";
+    // =============================================
+
+    const CATEGORIES = [
+        "Animals & Pets","Antiques","Arts and Crafts","Bakery","Beauty & Make-up",
+        "Beer, Wine & Spirits","Booksellers","Butcher","Cars & Motorbikes","Charity",
+        "Cheesemonger","Chocolatier","Comics & Manga","Computers and Televisions",
+        "Delicatessen","Fashion & Clothing","Fishmonger","Footwear","Gardening",
+        "Greengrocer","Haberdashery (Sewing & Knitting)","Health Food","Jewellery",
+        "Painting & Photography","Sports & Fitness","Sweets & Confectionary",
+        "Tea and Coffee","Toys & Games","Video Games"
+    ];
+
+    const UK_LOCATIONS = [
+        "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
+        "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
+        "Chelmsford","Cheltenham","Chester","Colchester","Coventry","Crawley","Darlington","Derby",
+        "Doncaster","Dover","Dundee","Durham","Edinburgh","Exeter","Glasgow","Gloucester",
+        "Grimsby","Guildford","Halifax","Harrogate","Huddersfield","Hull","Inverness","Ipswich",
+        "Keighley","Lancaster","Leeds","Leicester","Lincoln","Liverpool","London","Luton",
+        "Macclesfield","Manchester","Middlesbrough","Milton Keynes","Newcastle","Northampton",
+        "Norwich","Nottingham","Oldham","Oxford","Perth","Peterborough","Plymouth","Portsmouth",
+        "Preston","Reading","Rochdale","Rotherham","Saltaire","Scarborough","Sheffield","Shipley",
+        "Shrewsbury","Skipton","Southampton","Southend","St Albans","Stockport","Stoke-on-Trent",
+        "Sunderland","Swansea","Swindon","Taunton","Wakefield","Walsall","Warrington","Wigan",
+        "Winchester","Wolverhampton","Worcester","York"
+    ];
+
+    // Affiliate URL helpers
+    function amazonAffiliateUrl(url) {
+        const sep = url.includes("?") ? "&" : "?";
+        return url + sep + "tag=" + AMAZON_ASSOCIATE_TAG;
+    }
+
+    function etsyAffiliateUrl(url) {
+        return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID +
+               "&awinaffid=" + AWIN_PUBLISHER_ID +
+               "&ued=" + encodeURIComponent(url);
+    }
+
+    // State
+    let selectedLocation = "";
+    let selectedCategory = "";
+    let isSearching = false;
+
+    // Dropdown logic
+    function setupDropdown(inputEl, listEl, clearEl, items, onSelect, getSelected) {
+        function renderList(filter) {
+            const filtered = items.filter(item =>
+                item.toLowerCase().includes(filter.toLowerCase())
+            );
+            listEl.innerHTML = filtered.length === 0
+                ? '<div class="dropdown-empty">No matches</div>'
+                : filtered.map(item => '<div class="dropdown-item">' + item + '</div>').join("");
+            listEl.classList.add("open");
+
+            listEl.querySelectorAll(".dropdown-item").forEach(el => {
+                el.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    onSelect(el.textContent);
+                    inputEl.value = el.textContent;
+                    listEl.classList.remove("open");
+                    clearEl.style.display = "block";
+                });
+            });
+        }
+
+        inputEl.addEventListener("focus", () => {
+            inputEl.value = "";
+            renderList("");
+        });
+
+        inputEl.addEventListener("input", () => {
+            renderList(inputEl.value);
+        });
+
+        inputEl.addEventListener("blur", () => {
+            setTimeout(() => {
+                listEl.classList.remove("open");
+                const sel = getSelected();
+                if (sel) {
+                    inputEl.value = sel;
+                    clearEl.style.display = "block";
+                } else {
+                    inputEl.value = "";
+                    clearEl.style.display = "none";
+                }
+            }, 150);
+        });
+
+        clearEl.addEventListener("click", () => {
+            onSelect("");
+            inputEl.value = "";
+            clearEl.style.display = "none";
+        });
+    }
+
+    setupDropdown(
+        document.getElementById("locationInput"),
+        document.getElementById("locationList"),
+        document.getElementById("locationClear"),
+        UK_LOCATIONS,
+        (val) => { selectedLocation = val; },
+        () => selectedLocation
+    );
+
+    setupDropdown(
+        document.getElementById("categoryInput"),
+        document.getElementById("categoryList"),
+        document.getElementById("categoryClear"),
+        CATEGORIES,
+        (val) => { selectedCategory = val; },
+        () => selectedCategory
+    );
+
+    // Search via Cloudflare Worker
+    async function searchWorker(query, category) {
+        try {
+            const response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query, category })
+            });
+            const data = await response.json();
+            if (data.error) {
+                console.error("Worker error:", data.error);
+                return [];
+            }
+            return data.results || [];
+        } catch (e) {
+            console.error("Search failed:", e);
+            return [];
+        }
+    }
+
+    // Rendering helpers
+    function renderResultCard(r) {
+        return '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer" class="result-card">' +
+            '<div class="result-name">' + escapeHtml(r.name) + '</div>' +
+            '<div class="result-snippet">' + escapeHtml(r.snippet) + '</div>' +
+            '<div class="result-url">' + escapeHtml(r.displayUrl || r.url) + '</div>' +
+            '</a>';
+    }
+
+    function renderSectionHeader(icon, title, color, id) {
+        return '<div class="section-header">' +
+            '<span class="section-icon" style="background:' + color + '15;">' + icon + '</span>' +
+            '<div>' +
+                '<div class="section-title">' + title + '</div>' +
+                '<div class="section-count" id="count-' + id + '">Searching...</div>' +
+            '</div>' +
+            '<div class="spinner" id="spinner-' + id + '" style="border-top-color:' + color + ';"></div>' +
+        '</div>';
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function updateSection(id, count) {
+        const countEl = document.getElementById("count-" + id);
+        const spinnerEl = document.getElementById("spinner-" + id);
+        if (countEl) countEl.textContent = count + " result" + (count !== 1 ? "s" : "") + " found";
+        if (spinnerEl) spinnerEl.remove();
+    }
+
+    // Main search handler
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+        if (!selectedCategory) { alert("Please select a category."); return; }
+        if (isSearching) return;
+
+        isSearching = true;
+        const btn = document.getElementById("searchBtn");
+        btn.disabled = true;
+        document.getElementById("emptyState").style.display = "none";
+
+        const q = selectedCategory;
+        const loc = selectedLocation;
+        const resultsDiv = document.getElementById("results");
+
+        // Build skeleton
+        let html = "";
+        if (loc) {
+            html += renderSectionHeader("📍", "Shops in " + loc, "#2ecc71", "local");
+            html += '<div id="local-results"></div>';
+        }
+        html += renderSectionHeader("🛒", "Online shops", "#8e44ad", "online");
+        html += '<div id="online-results"></div>';
+        resultsDiv.innerHTML = html;
+
+        // Local search
+        if (loc) {
+            searchWorker(q + " shops in " + loc + " UK", "local").then(r => {
+                const mapped = r.map(item => ({
+                    ...item,
+                    displayUrl: "maps.google.com — " + item.name,
+                    url: "https://www.google.com/maps/search/" + encodeURIComponent(item.name + ", " + loc)
+                }));
+                updateSection("local", mapped.length);
+                document.getElementById("local-results").innerHTML = mapped.length > 0
+                    ? mapped.map(renderResultCard).join("")
+                    : '<p class="no-results">No local results found. Try a different category.</p>';
+            });
+        }
+
+        // Amazon
+        const amazonPromise = searchWorker("site:amazon.co.uk/stores " + q, "amazon").then(r => {
+            return r
+                .map(item => {
+                    let url = item.url;
+                    if (!url.startsWith("https://www.amazon.co.uk/stores")) {
+                        const m = url.match(/amazon\.co\.uk\/stores\/([\w\-\/]+)/);
+                        if (m) url = "https://www.amazon.co.uk/stores/" + m[1];
+                    }
+                    return { ...item, url };
+                })
+                .filter(item => item.url.startsWith("https://www.amazon.co.uk/stores"))
+                .map(item => ({
+                    ...item,
+                    displayUrl: item.url,
+                    url: amazonAffiliateUrl(item.url)
+                }));
+        });
+
+        // Etsy
+        const etsyPromise = searchWorker("site:etsy.com/uk/shop " + q, "etsy").then(r => {
+            return r
+                .map(item => {
+                    let url = item.url;
+                    const m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9]+)/);
+                    if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
+                    return { ...item, url };
+                })
+                .filter(item => item.url.startsWith("https://www.etsy.com/uk/shop"))
+                .map(item => ({
+                    ...item,
+                    displayUrl: item.url,
+                    url: etsyAffiliateUrl(item.url)
+                }));
+        });
+
+        // Combine online results
+        Promise.all([amazonPromise, etsyPromise]).then(([amz, ets]) => {
+            const interleaved = [];
+            const max = Math.max(amz.length, ets.length);
+            for (let i = 0; i < max; i++) {
+                if (i < amz.length) interleaved.push(amz[i]);
+                if (i < ets.length) interleaved.push(ets[i]);
+            }
+
+            updateSection("online", interleaved.length);
+            document.getElementById("online-results").innerHTML = interleaved.length > 0
+                ? interleaved.map(renderResultCard).join("")
+                : '<p class="no-results">No online results found.</p>';
+
+            isSearching = false;
+            btn.disabled = false;
+        });
+    });
+    </script>
+</body>
+</html>
