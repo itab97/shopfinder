@@ -116,14 +116,10 @@
             align-items: center;
         }
         .physical-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); border-color: #d0c9be; }
-        .physical-card .map-thumb {
-            width: 72px; height: 72px; border-radius: 6px; object-fit: cover;
-            flex-shrink: 0; background: #f0ece4;
-        }
-        .physical-card .map-placeholder {
-            width: 72px; height: 72px; border-radius: 6px; background: #f0ece4;
+        .physical-card .category-icon {
+            width: 56px; height: 56px; border-radius: 8px; background: #f8f5ef;
             flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-            font-size: 22px; opacity: 0.4;
+            font-size: 28px;
         }
         .physical-card .card-text { min-width: 0; flex: 1; }
         .physical-card .card-snippet {
@@ -159,12 +155,12 @@
             <label class="field-label field-label-mb8">Search for</label>
             <div class="toggle-row">
                 <button class="toggle-btn" id="btnPhysical" data-type="physical">
-                    <div class="label">🏪 Physical Shops</div>
-                    <div class="sublabel">Local high street</div>
+                    <div class="label">🏪 Shops in your city</div>
+                    <div class="sublabel">Experiences close by</div>
                 </button>
                 <button class="toggle-btn" id="btnOnline" data-type="online">
-                    <div class="label">🌐 Online Shops</div>
-                    <div class="sublabel">Amazon &amp; Etsy</div>
+                    <div class="label">🌐 Online shops in the UK</div>
+                    <div class="sublabel">Low shipping costs</div>
                 </button>
             </div>
         </div>
@@ -208,7 +204,7 @@
         </div>
 
         <button class="search-btn" id="searchBtn" disabled>Search</button>
-        <p class="hint" id="hintText">Choose Physical or Online shops above to get started</p>
+        <p class="hint" id="hintText">Choose a shop type above to get started</p>
 
         <div id="results"></div>
 
@@ -219,7 +215,6 @@
 
         <p class="disclosure">
             As an Amazon Associate and Etsy Affiliate, we earn from qualifying purchases.
-            <br>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.
         </p>
     </div>
 
@@ -235,15 +230,38 @@
     const RESULT_LIMIT = 10;
     // =============================================
 
-    const CATEGORIES = [
-        "Animals & Pets","Antiques","Arts and Crafts","Bakery","Beauty & Make-up",
-        "Beer, Wine & Spirits","Booksellers","Butcher","Cars & Motorbikes","Charity",
-        "Cheesemonger","Chocolatier","Comics & Manga","Computers and Televisions",
-        "Delicatessen","Fashion & Clothing","Fishmonger","Footwear","Gardening",
-        "Greengrocer","Haberdashery (Sewing & Knitting)","Health Food","Jewellery",
-        "Painting & Photography","Sports & Fitness","Sweets & Confectionary",
-        "Tea and Coffee","Toys & Games","Video Games"
-    ];
+    const CATEGORY_ICONS = {
+        "Animals & Pets": "🐾",
+        "Antiques": "🏺",
+        "Arts and Crafts": "🎨",
+        "Bakery": "🍞",
+        "Beauty & Make-up": "💄",
+        "Beer, Wine & Spirits": "🍷",
+        "Booksellers": "📚",
+        "Butcher": "🥩",
+        "Cars & Motorbikes": "🚗",
+        "Charity": "💛",
+        "Cheesemonger": "🧀",
+        "Chocolatier": "🍫",
+        "Comics & Manga": "💬",
+        "Computers and Televisions": "💻",
+        "Delicatessen": "🥖",
+        "Fashion & Clothing": "👗",
+        "Fishmonger": "🐟",
+        "Footwear": "👟",
+        "Gardening": "🌱",
+        "Greengrocer": "🥬",
+        "Haberdashery (Sewing & Knitting)": "🧵",
+        "Health Food": "🥗",
+        "Jewellery": "💎",
+        "Painting & Photography": "🖼️",
+        "Sports & Fitness": "⚽",
+        "Sweets & Confectionary": "🍬",
+        "Tea and Coffee": "☕",
+        "Toys & Games": "🧸",
+        "Video Games": "🎮"
+    };
+    const CATEGORIES = Object.keys(CATEGORY_ICONS);
 
     const UK_LOCATIONS = [
         "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
@@ -272,32 +290,7 @@
                "&ued=" + encodeURIComponent(url);
     }
 
-    // Geocoding + map tiles (free OpenStreetMap)
-    async function geocodeShop(name, city) {
-        try {
-            const query = encodeURIComponent(name + ", " + city + ", UK");
-            const res = await fetch(
-                "https://nominatim.openstreetmap.org/search?q=" + query + "&format=json&limit=1",
-                { headers: { "User-Agent": "ShopFinderUK/1.0" } }
-            );
-            const data = await res.json();
-            if (data.length > 0) {
-                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-            }
-        } catch (e) { console.error("Geocode failed:", e); }
-        return null;
-    }
-
-    function getTileUrl(lat, lng, zoom) {
-        zoom = zoom || 16;
-        const n = Math.pow(2, zoom);
-        const x = Math.floor((lng + 180) / 360 * n);
-        const latRad = lat * Math.PI / 180;
-        const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
-        return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + y + ".png";
-    }
-
-    function delay(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+    // No external APIs needed for category icons
 
     // State
     let shopType = "";        // "physical" or "online"
@@ -336,7 +329,7 @@
 
         // Hints
         if (!shopType) {
-            hintText.textContent = "Choose Physical or Online shops above to get started";
+            hintText.textContent = "Choose a shop type above to get started";
             hintText.classList.remove("hidden");
         } else if (shopType === "physical" && !selectedLocation && term) {
             hintText.textContent = "Select a location to search for physical shops";
@@ -501,9 +494,10 @@
             '</a>';
     }
 
-    function renderPhysicalCard(r, index) {
-        return '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer" class="physical-card" id="physical-card-' + index + '">' +
-            '<div class="map-placeholder" id="map-thumb-' + index + '">📍</div>' +
+    function renderPhysicalCard(r) {
+        var icon = CATEGORY_ICONS[getSearchTerm()] || "🛍️";
+        return '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer" class="physical-card">' +
+            '<div class="category-icon">' + icon + '</div>' +
             '<div class="card-text">' +
                 '<div class="result-name">' + escapeHtml(r.name) + '</div>' +
                 '<div class="card-snippet">' + escapeHtml(r.snippet) + '</div>' +
@@ -529,23 +523,7 @@
         if (spinnerEl) spinnerEl.remove();
     }
 
-    // Geocode results and load map thumbnails in background
-    async function loadMapThumbnails(results, city) {
-        for (var i = 0; i < results.length; i++) {
-            var coords = await geocodeShop(results[i].name, city);
-            if (coords) {
-                var el = document.getElementById("map-thumb-" + i);
-                if (el) {
-                    var img = document.createElement("img");
-                    img.src = getTileUrl(coords.lat, coords.lng);
-                    img.alt = "Map near " + results[i].name;
-                    img.className = "map-thumb";
-                    el.replaceWith(img);
-                }
-            }
-            if (i < results.length - 1) await delay(1100);
-        }
-    }
+    // Physical cards now use category emoji icons (no external calls needed)
 
     // Main search handler
     searchBtn.addEventListener("click", async function() {
@@ -578,13 +556,8 @@
 
             updateSection("local", mapped.length);
             document.getElementById("local-results").innerHTML = mapped.length > 0
-                ? mapped.map(function(r, i) { return renderPhysicalCard(r, i); }).join("")
+                ? mapped.map(function(r) { return renderPhysicalCard(r); }).join("")
                 : '<p class="no-results">No local results found. Try a different category.</p>';
-
-            // Load map thumbnails in background
-            if (mapped.length > 0) {
-                loadMapThumbnails(mapped, loc);
-            }
 
             isSearching = false;
             updateUI();
