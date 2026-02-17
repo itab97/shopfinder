@@ -214,7 +214,7 @@
         </div>
 
         <p class="disclosure">
-            As an Amazon Associate and Etsy Affiliate, we earn from qualifying purchases.
+            As an Etsy Affiliate, we earn from qualifying purchases.
         </p>
     </div>
 
@@ -224,7 +224,6 @@
     // =============================================
     const WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
 
-    const AMAZON_ASSOCIATE_TAG = "yoursite-21";
     const AWIN_PUBLISHER_ID = "000000";
     const AWIN_ETSY_ADVERTISER_ID = "6220";
     const RESULT_LIMIT = 10;
@@ -279,11 +278,6 @@
     ];
 
     // Affiliate URL helpers
-    function amazonAffiliateUrl(url) {
-        const sep = url.includes("?") ? "&" : "?";
-        return url + sep + "tag=" + AMAZON_ASSOCIATE_TAG;
-    }
-
     function etsyAffiliateUrl(url) {
         return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID +
                "&awinaffid=" + AWIN_PUBLISHER_ID +
@@ -563,32 +557,13 @@
             updateUI();
 
         } else {
-            // Online shops: Amazon + Etsy
+            // Online shops: Etsy only
             html += renderSectionHeader("🌐", "Online shops", "#8e44ad", "online");
             html += '<div id="online-results"></div>';
             resultsDiv.innerHTML = html;
 
-            var halfLimit = Math.floor(RESULT_LIMIT / 2);
-            var halfLimitCeil = Math.ceil(RESULT_LIMIT / 2);
-
-            var amazonPromise = searchWorker("site:amazon.co.uk/stores " + term, "amazon", halfLimit).then(function(r) {
-                return r
-                    .map(function(item) {
-                        var url = item.url;
-                        if (!url.startsWith("https://www.amazon.co.uk/stores")) {
-                            var m = url.match(/amazon\.co\.uk\/stores\/([\w\-\/]+)/);
-                            if (m) url = "https://www.amazon.co.uk/stores/" + m[1];
-                        }
-                        return { name: item.name, snippet: item.snippet, url: url };
-                    })
-                    .filter(function(item) { return item.url.startsWith("https://www.amazon.co.uk/stores"); })
-                    .map(function(item) {
-                        return { name: item.name, snippet: item.snippet, displayUrl: item.url, url: amazonAffiliateUrl(item.url) };
-                    });
-            });
-
-            var etsyPromise = searchWorker("site:etsy.com/uk/shop " + term, "etsy", halfLimitCeil).then(function(r) {
-                return r
+            searchWorker("site:etsy.com/uk/shop " + term, "etsy", RESULT_LIMIT).then(function(r) {
+                var etsyResults = r
                     .map(function(item) {
                         var url = item.url;
                         var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9]+)/);
@@ -599,21 +574,10 @@
                     .map(function(item) {
                         return { name: item.name, snippet: item.snippet, displayUrl: item.url, url: etsyAffiliateUrl(item.url) };
                     });
-            });
 
-            Promise.all([amazonPromise, etsyPromise]).then(function(results) {
-                var amz = results[0];
-                var ets = results[1];
-                var interleaved = [];
-                var max = Math.max(amz.length, ets.length);
-                for (var i = 0; i < max; i++) {
-                    if (i < amz.length) interleaved.push(amz[i]);
-                    if (i < ets.length) interleaved.push(ets[i]);
-                }
-
-                updateSection("online", interleaved.length);
-                document.getElementById("online-results").innerHTML = interleaved.length > 0
-                    ? interleaved.map(renderOnlineCard).join("")
+                updateSection("online", etsyResults.length);
+                document.getElementById("online-results").innerHTML = etsyResults.length > 0
+                    ? etsyResults.map(renderOnlineCard).join("")
                     : '<p class="no-results">No online results found.</p>';
 
                 isSearching = false;
