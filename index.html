@@ -565,14 +565,17 @@
             searchWorker("site:etsy.com/uk/shop " + term, "etsy", RESULT_LIMIT).then(function(r) {
                 var etsyResults = r
                     .map(function(item) {
-                        var url = item.url;
-                        var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9]+)/);
+                        var url = item.url || "";
+                        var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
                         if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
                         return { name: item.name, snippet: item.snippet, url: url };
                     })
-                    .filter(function(item) { return item.url.startsWith("https://www.etsy.com/uk/shop"); })
+                    .filter(function(item) { return /etsy\.com.*\/shop\//.test(item.url); })
                     .map(function(item) {
-                        return { name: item.name, snippet: item.snippet, displayUrl: item.url, url: etsyAffiliateUrl(item.url) };
+                        var cleanUrl = item.url.indexOf("https://www.etsy.com/uk/shop/") === 0
+                            ? item.url
+                            : item.url.replace(/https?:\/\/(www\.)?etsy\.com/, "https://www.etsy.com/uk").replace(/\/shop\//, "/shop/");
+                        return { name: item.name, snippet: item.snippet, displayUrl: cleanUrl, url: etsyAffiliateUrl(cleanUrl) };
                     });
 
                 updateSection("online", etsyResults.length);
