@@ -539,12 +539,12 @@
             html += '<div id="local-results"></div>';
             resultsDiv.innerHTML = html;
 
-            var localResults = await searchWorker(term + " shops in " + loc + " UK", "local", RESULT_LIMIT);
+            var localResults = await searchWorker(loc + " " + term, "local", RESULT_LIMIT);
             var mapped = localResults.map(function(item) {
                 return {
                     name: item.name,
                     snippet: item.snippet,
-                    url: "https://www.google.com/maps/search/" + encodeURIComponent(item.name + ", " + loc)
+                    url: item.url
                 };
             });
 
