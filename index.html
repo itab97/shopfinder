@@ -173,7 +173,7 @@
     // SETTINGS
     // ========================================
     var GOOGLE_PLACES_API_KEY = "AIzaSyCsm5h-xdvVbeuYRIY3YEUoJiQIs3VDYdA";
-    var BRAVE_API_KEY = "BSA-KSA3T6A7eU89V-V71-q1AhWsN4k";
+    var WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
     var AWIN_PUBLISHER_ID = "000000";
     var AWIN_ETSY_ADVERTISER_ID = "6220";
     var RESULT_LIMIT = 10;
@@ -433,24 +433,18 @@
         } catch(e) { return []; }
     }
 
-    // ========== Brave Search API — Etsy online shops ==========
+    // ========== Worker → Brave Search — Etsy online shops ==========
     async function searchEtsy(query, limit) {
         limit = limit || RESULT_LIMIT;
         try {
-            var searchQuery = "site:etsy.com/uk/shop " + query;
-            var url = "https://api.search.brave.com/res/v1/web/search?q=" + encodeURIComponent(searchQuery) + "&count=" + limit;
-            var response = await fetch(url, {
-                headers: { "Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY }
+            var response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query, limit: limit })
             });
             var data = await response.json();
-            if (!data.web || !data.web.results) return [];
-            return data.web.results.map(function(r) {
-                return {
-                    name: (r.title || "").replace(/ \| Etsy.*$/i, "").replace(/ - Etsy.*$/i, "").trim(),
-                    url: r.url || "#",
-                    snippet: r.description || ""
-                };
-            }).slice(0, limit);
+            if (data.error) return [];
+            return (data.results || []).slice(0, limit);
         } catch(e) { return []; }
     }
 
