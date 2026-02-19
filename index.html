@@ -89,14 +89,12 @@
     </div>
 
     <div class="container">
-        <!-- My Saved Places button -->
         <button class="saved-btn" id="savedBtn">
             <span style="font-size:18px;">★</span>
             My Saved Places
             <span class="badge hidden" id="savedBadge">0</span>
         </button>
 
-        <!-- Saved Places panel -->
         <div class="hidden" id="savedPanel">
             <div class="section-header">
                 <span class="section-icon" style="background:#c9a96e15;">★</span>
@@ -109,9 +107,7 @@
             <div id="savedList"></div>
         </div>
 
-        <!-- Search panel -->
         <div id="searchPanel">
-            <!-- Shop Type -->
             <div>
                 <label class="field-label field-label-mb8">Search for</label>
                 <div class="toggle-row">
@@ -126,7 +122,6 @@
                 </div>
             </div>
 
-            <!-- Location (physical only) -->
             <div class="dropdown-wrapper hidden" id="locationWrapper">
                 <label class="field-label">Your location</label>
                 <div style="position:relative;">
@@ -136,7 +131,6 @@
                 <div class="dropdown-list" id="locationList"></div>
             </div>
 
-            <!-- Search Mode -->
             <div class="hidden" id="searchModeWrapper">
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
@@ -145,7 +139,6 @@
                 </div>
             </div>
 
-            <!-- Category dropdown -->
             <div class="dropdown-wrapper hidden" id="categoryWrapper">
                 <label class="field-label">What are you looking for?</label>
                 <div style="position:relative;">
@@ -155,7 +148,6 @@
                 <div class="dropdown-list" id="categoryList"></div>
             </div>
 
-            <!-- Shop name -->
             <div class="text-input-wrapper hidden" id="nameWrapper">
                 <label class="field-label">Shop name</label>
                 <div style="position:relative;">
@@ -177,6 +169,10 @@
     </div>
 
     <script>
+    // ========================================
+    // SETTINGS
+    // ========================================
+    var GOOGLE_PLACES_API_KEY = "AIzaSyCsm5h-xdvVbeuYRIY3YEUoJiQIs3VDYdA";
     var WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
     var AWIN_PUBLISHER_ID = "000000";
     var AWIN_ETSY_ADVERTISER_ID = "6220";
@@ -227,18 +223,13 @@
     function addSaved(item) {
         if (!isSavedItem(item)) {
             savedPlaces.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, savedAt: Date.now() });
-            persistSaved();
-            refreshSavedUI();
-            refreshResultSaveButtons();
+            persistSaved(); refreshSavedUI(); refreshResultSaveButtons();
         }
     }
     function removeSaved(item) {
         savedPlaces = savedPlaces.filter(function(s) { return !(s.name === item.name && s.url === item.url); });
-        persistSaved();
-        refreshSavedUI();
-        refreshResultSaveButtons();
+        persistSaved(); refreshSavedUI(); refreshResultSaveButtons();
     }
-
     var savedPlaces = loadSaved();
 
     // ========== State ==========
@@ -277,7 +268,6 @@
 
     // ========== Saved UI ==========
     function refreshSavedUI() {
-        // Badge
         if (savedPlaces.length > 0) {
             savedBadge.textContent = savedPlaces.length;
             savedBadge.classList.remove("hidden");
@@ -286,7 +276,6 @@
         }
         savedBtn.classList.toggle("active", showingSaved);
 
-        // Panel
         if (showingSaved) {
             savedPanel.classList.remove("hidden");
             searchPanel.classList.add("hidden");
@@ -296,7 +285,7 @@
             if (savedPlaces.length === 0) {
                 savedList.innerHTML = '<div class="saved-empty"><div style="font-size:28px;margin-bottom:8px;">☆</div><p>No saved places yet. Search for shops and tap ☆ to save them here.</p></div>';
             } else {
-                savedList.innerHTML = savedPlaces.map(function(item, i) {
+                savedList.innerHTML = savedPlaces.map(function(item) {
                     return renderCard(item, item.icon, true);
                 }).join("");
                 attachSaveButtons();
@@ -308,34 +297,27 @@
     }
 
     function refreshResultSaveButtons() {
-        // Update save buttons in search results
         var btns = resultsDiv.querySelectorAll(".save-btn");
         btns.forEach(function(btn) {
             var idx = parseInt(btn.getAttribute("data-idx"));
             var item = currentResults[idx];
             if (item) {
-                var saved = isSavedItem(item);
-                btn.textContent = saved ? "★" : "☆";
-                btn.className = "save-btn " + (saved ? "saved" : "unsaved");
+                var s = isSavedItem(item);
+                btn.textContent = s ? "★" : "☆";
+                btn.className = "save-btn " + (s ? "saved" : "unsaved");
             }
         });
     }
 
-    // ========== Toggle saved panel ==========
     savedBtn.addEventListener("click", function() {
         showingSaved = !showingSaved;
-        if (showingSaved) {
-            emptyState.style.display = "none";
-        }
+        if (showingSaved) emptyState.style.display = "none";
         refreshSavedUI();
     });
 
     clearAllBtn.addEventListener("click", function() {
         if (confirm("Remove all saved places?")) {
-            savedPlaces = [];
-            persistSaved();
-            refreshSavedUI();
-            refreshResultSaveButtons();
+            savedPlaces = []; persistSaved(); refreshSavedUI(); refreshResultSaveButtons();
         }
     });
 
@@ -362,10 +344,9 @@
         hintArea.innerHTML = hint ? '<p class="hint">' + hint + '</p>' : '';
     }
 
-    // ========== Shop type buttons ==========
+    // ========== Buttons ==========
     document.getElementById("btnPhysical").addEventListener("click", function() { shopType = "physical"; updateUI(); });
     document.getElementById("btnOnline").addEventListener("click", function() { shopType = "online"; updateUI(); });
-
     document.getElementById("btnCategory").addEventListener("click", function() { searchMode = "category"; updateUI(); });
     document.getElementById("btnName").addEventListener("click", function() { searchMode = "name"; updateUI(); });
 
@@ -420,6 +401,53 @@
         CATEGORIES, function(val) { selectedCategory = val; }, function() { return selectedCategory; }
     );
 
+    // ========== Google Places API — physical shops ==========
+    async function searchPlaces(query, limit) {
+        limit = limit || RESULT_LIMIT;
+        try {
+            var response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                    "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.googleMapsUri,places.rating,places.userRatingCount"
+                },
+                body: JSON.stringify({
+                    textQuery: query,
+                    languageCode: "en",
+                    regionCode: "GB",
+                    maxResultCount: limit
+                })
+            });
+            var data = await response.json();
+            if (!data.places) return [];
+            return data.places.map(function(p) {
+                var snippet = p.formattedAddress || "";
+                if (p.rating) snippet += " · ⭐ " + p.rating + (p.userRatingCount ? " (" + p.userRatingCount + ")" : "");
+                return {
+                    name: (p.displayName && p.displayName.text) || "Unknown",
+                    url: p.googleMapsUri || "#",
+                    snippet: snippet
+                };
+            }).slice(0, limit);
+        } catch(e) { return []; }
+    }
+
+    // ========== Worker — Etsy online shops ==========
+    async function searchWorker(query, limit) {
+        limit = limit || RESULT_LIMIT;
+        try {
+            var response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query, limit: limit })
+            });
+            var data = await response.json();
+            if (data.error) return [];
+            return (data.results || []).slice(0, limit);
+        } catch (e) { return []; }
+    }
+
     // ========== Card rendering ==========
     function renderCard(r, icon, isSavedCard) {
         var itemSaved = isSavedItem(r);
@@ -449,10 +477,8 @@
                 var savedName = btn.getAttribute("data-saved-name");
                 var savedUrl = btn.getAttribute("data-saved-url");
                 if (savedName !== null) {
-                    // Button in saved panel — remove
                     removeSaved({ name: savedName, url: savedUrl });
                 } else {
-                    // Button in results — toggle
                     var idx = parseInt(btn.getAttribute("data-idx"));
                     var item = currentResults[idx];
                     if (item) {
@@ -479,21 +505,6 @@
         if (spinnerEl) spinnerEl.remove();
     }
 
-    // ========== Worker search ==========
-    async function searchWorker(query, limit) {
-        limit = limit || RESULT_LIMIT;
-        try {
-            var response = await fetch(WORKER_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query: query, limit: limit })
-            });
-            var data = await response.json();
-            if (data.error) return [];
-            return (data.results || []).slice(0, limit);
-        } catch (e) { return []; }
-    }
-
     // ========== Main search ==========
     searchBtn.addEventListener("click", async function() {
         var term = getSearchTerm();
@@ -513,21 +524,21 @@
         resultsDiv.innerHTML = renderSectionHeader(sectionIcon, sectionTitle, sectionColor, "results") +
             '<div id="results-list"></div>';
 
-        var query, results;
+        var results;
         if (shopType === "physical") {
-            query = searchMode === "category" ? selectedLocation + " " + term : term;
-            results = await searchWorker(query, RESULT_LIMIT);
+            var query = selectedLocation + " " + term;
             var icon = CATEGORY_ICONS[term] || "🛍️";
-            results = results.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
+            var raw = await searchPlaces(query, RESULT_LIMIT);
+            results = raw.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
             currentResults = results;
             updateSection("results", results.length);
             document.getElementById("results-list").innerHTML = results.length > 0
                 ? results.map(function(r) { return renderCard(r, icon, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
         } else {
-            query = "site:etsy.com/uk/shop " + term;
-            var raw = await searchWorker(query, RESULT_LIMIT);
-            results = raw
+            var etsyQuery = "site:etsy.com/uk/shop " + term;
+            var rawEtsy = await searchWorker(etsyQuery, RESULT_LIMIT);
+            results = rawEtsy
                 .map(function(item) {
                     var url = item.url || "";
                     var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
