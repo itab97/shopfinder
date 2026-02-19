@@ -17,6 +17,10 @@
         .field-label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
         .field-label-mb8 { margin-bottom: 8px; }
 
+        .saved-btn { width: 100%; padding: 12px 16px; border-radius: 10px; border: 2px solid #e0dbd2; background: #fff; color: #1a1a2e; cursor: pointer; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+        .saved-btn.active { border-color: #c9a96e; background: #faf6ee; }
+        .saved-btn .badge { background: #1a1a2e; color: #e8d5b7; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 4px; }
+
         .toggle-row { display: flex; gap: 8px; margin-bottom: 16px; }
         .toggle-btn { flex: 1; padding: 14px 12px; border-radius: 10px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; text-align: center; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
         .toggle-btn.active { border-color: #1a1a2e; background: #1a1a2e; color: #e8d5b7; }
@@ -51,13 +55,23 @@
         .section-count { font-size: 12px; color: #aaa; }
         .spinner { margin-left: auto; width: 18px; height: 18px; border: 2px solid #e0dbd2; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-        .result-card { display: flex; gap: 12px; background: #fff; border-radius: 8px; padding: 10px 12px; text-decoration: none; color: #1a1a2e; border: 1px solid #eee; transition: all 0.15s; margin-bottom: 6px; align-items: center; }
+        .result-card { display: flex; gap: 12px; background: #fff; border-radius: 8px; padding: 10px 12px; color: #1a1a2e; border: 1px solid #eee; transition: all 0.15s; margin-bottom: 6px; align-items: center; }
         .result-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); border-color: #d0c9be; }
+        .result-card a { text-decoration: none; color: #1a1a2e; min-width: 0; flex: 1; }
         .result-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; line-height: 1.3; }
         .result-snippet { font-size: 12px; color: #888; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .result-url { font-size: 11px; color: #b0a890; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .category-icon { width: 56px; height: 56px; border-radius: 8px; background: #f8f5ef; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-        .card-text { min-width: 0; flex: 1; }
+
+        .save-btn { flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .save-btn.unsaved { background: #f8f5ef; color: #999; }
+        .save-btn.saved { background: #1a1a2e; color: #e8d5b7; }
+
+        .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .clear-all-btn:hover { border-color: #ccc; color: #666; }
+
+        .saved-empty { text-align: center; padding: 24px 16px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
+        .saved-empty p { font-size: 13px; color: #aaa; margin: 0; }
 
         .empty-state { text-align: center; padding: 40px 20px; }
         .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
@@ -75,66 +89,90 @@
     </div>
 
     <div class="container">
-        <!-- Shop Type -->
-        <div>
-            <label class="field-label field-label-mb8">Search for</label>
-            <div class="toggle-row">
-                <button class="toggle-btn" id="btnPhysical" data-type="physical">
-                    <div class="label">🏪 Shops in your city</div>
-                    <div class="sublabel">Experiences close by</div>
-                </button>
-                <button class="toggle-btn" id="btnOnline" data-type="online">
-                    <div class="label">🌐 Online shops in the UK</div>
-                    <div class="sublabel">Low shipping costs</div>
-                </button>
+        <!-- My Saved Places button -->
+        <button class="saved-btn" id="savedBtn">
+            <span style="font-size:18px;">★</span>
+            My Saved Places
+            <span class="badge hidden" id="savedBadge">0</span>
+        </button>
+
+        <!-- Saved Places panel -->
+        <div class="hidden" id="savedPanel">
+            <div class="section-header">
+                <span class="section-icon" style="background:#c9a96e15;">★</span>
+                <div style="flex:1;">
+                    <div class="section-title">My Saved Places</div>
+                    <div class="section-count" id="savedCount">0 results found</div>
+                </div>
+                <button class="clear-all-btn hidden" id="clearAllBtn">Clear all</button>
+            </div>
+            <div id="savedList"></div>
+        </div>
+
+        <!-- Search panel -->
+        <div id="searchPanel">
+            <!-- Shop Type -->
+            <div>
+                <label class="field-label field-label-mb8">Search for</label>
+                <div class="toggle-row">
+                    <button class="toggle-btn" id="btnPhysical" data-type="physical">
+                        <div class="label">🏪 Shops in your city</div>
+                        <div class="sublabel">Experiences close by</div>
+                    </button>
+                    <button class="toggle-btn" id="btnOnline" data-type="online">
+                        <div class="label">🌐 Online shops in the UK</div>
+                        <div class="sublabel">Low shipping costs</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Location (physical only) -->
+            <div class="dropdown-wrapper hidden" id="locationWrapper">
+                <label class="field-label">Your location</label>
+                <div style="position:relative;">
+                    <input type="text" class="dropdown-input" id="locationInput" placeholder="Select a town or city..." autocomplete="off" />
+                    <button class="dropdown-clear" id="locationClear">×</button>
+                </div>
+                <div class="dropdown-list" id="locationList"></div>
+            </div>
+
+            <!-- Search Mode -->
+            <div class="hidden" id="searchModeWrapper">
+                <label class="field-label field-label-mb8">Search by</label>
+                <div class="toggle-row-sm">
+                    <button class="toggle-btn-sm active" id="btnCategory">Category</button>
+                    <button class="toggle-btn-sm" id="btnName">Shop name</button>
+                </div>
+            </div>
+
+            <!-- Category dropdown -->
+            <div class="dropdown-wrapper hidden" id="categoryWrapper">
+                <label class="field-label">What are you looking for?</label>
+                <div style="position:relative;">
+                    <input type="text" class="dropdown-input" id="categoryInput" placeholder="Select a category..." autocomplete="off" />
+                    <button class="dropdown-clear" id="categoryClear">×</button>
+                </div>
+                <div class="dropdown-list" id="categoryList"></div>
+            </div>
+
+            <!-- Shop name -->
+            <div class="text-input-wrapper hidden" id="nameWrapper">
+                <label class="field-label">Shop name</label>
+                <div style="position:relative;">
+                    <input type="text" class="text-input" id="nameInput" placeholder="e.g. The Chocolate Factory, Bob's Books..." />
+                    <button class="text-clear" id="nameClear" style="display:none;">×</button>
+                </div>
+            </div>
+
+            <button class="search-btn" id="searchBtn" disabled>Search</button>
+            <div id="hintArea"></div>
+            <div id="resultsDiv"></div>
+            <div class="empty-state" id="emptyState">
+                <div class="icon">🔍</div>
+                <p>Choose a shop type and category to start searching</p>
             </div>
         </div>
 
-        <!-- Location (physical only) -->
-        <div class="dropdown-wrapper hidden" id="locationWrapper">
-            <label class="field-label">Your location</label>
-            <div style="position:relative;">
-                <input type="text" class="dropdown-input" id="locationInput" placeholder="Select a town or city..." autocomplete="off" />
-                <button class="dropdown-clear" id="locationClear">×</button>
-            </div>
-            <div class="dropdown-list" id="locationList"></div>
-        </div>
-
-        <!-- Search Mode -->
-        <div class="hidden" id="searchModeWrapper">
-            <label class="field-label field-label-mb8">Search by</label>
-            <div class="toggle-row-sm">
-                <button class="toggle-btn-sm active" id="btnCategory">Category</button>
-                <button class="toggle-btn-sm" id="btnName">Shop name</button>
-            </div>
-        </div>
-
-        <!-- Category dropdown -->
-        <div class="dropdown-wrapper hidden" id="categoryWrapper">
-            <label class="field-label">What are you looking for?</label>
-            <div style="position:relative;">
-                <input type="text" class="dropdown-input" id="categoryInput" placeholder="Select a category..." autocomplete="off" />
-                <button class="dropdown-clear" id="categoryClear">×</button>
-            </div>
-            <div class="dropdown-list" id="categoryList"></div>
-        </div>
-
-        <!-- Shop name -->
-        <div class="text-input-wrapper hidden" id="nameWrapper">
-            <label class="field-label">Shop name</label>
-            <div style="position:relative;">
-                <input type="text" class="text-input" id="nameInput" placeholder="e.g. The Chocolate Factory, Bob's Books..." />
-                <button class="text-clear" id="nameClear" style="display:none;">×</button>
-            </div>
-        </div>
-
-        <button class="search-btn" id="searchBtn" disabled>Search</button>
-        <div id="hintArea"></div>
-        <div id="resultsDiv"></div>
-        <div class="empty-state" id="emptyState">
-            <div class="icon">🔍</div>
-            <p>Choose a shop type and category to start searching</p>
-        </div>
         <p class="disclosure">As an Etsy Affiliate, we earn from qualifying purchases.</p>
     </div>
 
@@ -143,6 +181,7 @@
     var AWIN_PUBLISHER_ID = "000000";
     var AWIN_ETSY_ADVERTISER_ID = "6220";
     var RESULT_LIMIT = 10;
+    var STORAGE_KEY = "shopfinder_saved";
 
     function etsyAffiliateUrl(url) {
         return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID + "&awinaffid=" + AWIN_PUBLISHER_ID + "&ued=" + encodeURIComponent(url);
@@ -178,22 +217,57 @@
         "Winchester","Wolverhampton","Worcester","York"
     ];
 
+    // ========== Saved places ==========
+    function loadSaved() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+        catch(e) { return []; }
+    }
+    function persistSaved() { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPlaces)); }
+    function isSavedItem(item) { return savedPlaces.some(function(s) { return s.name === item.name && s.url === item.url; }); }
+    function addSaved(item) {
+        if (!isSavedItem(item)) {
+            savedPlaces.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, savedAt: Date.now() });
+            persistSaved();
+            refreshSavedUI();
+            refreshResultSaveButtons();
+        }
+    }
+    function removeSaved(item) {
+        savedPlaces = savedPlaces.filter(function(s) { return !(s.name === item.name && s.url === item.url); });
+        persistSaved();
+        refreshSavedUI();
+        refreshResultSaveButtons();
+    }
+
+    var savedPlaces = loadSaved();
+
+    // ========== State ==========
     var shopType = "";
     var searchMode = "category";
     var selectedLocation = "";
     var selectedCategory = "";
     var isSearching = false;
+    var showingSaved = false;
+    var currentResults = [];
 
+    // ========== DOM refs ==========
     var searchBtn = document.getElementById("searchBtn");
     var resultsDiv = document.getElementById("resultsDiv");
     var emptyState = document.getElementById("emptyState");
     var hintArea = document.getElementById("hintArea");
     var nameInput = document.getElementById("nameInput");
     var nameClear = document.getElementById("nameClear");
+    var savedBtn = document.getElementById("savedBtn");
+    var savedBadge = document.getElementById("savedBadge");
+    var savedPanel = document.getElementById("savedPanel");
+    var savedList = document.getElementById("savedList");
+    var savedCount = document.getElementById("savedCount");
+    var clearAllBtn = document.getElementById("clearAllBtn");
+    var searchPanel = document.getElementById("searchPanel");
 
     function escapeHtml(str) {
         var div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
+        div.appendChild(document.createTextNode(str || ""));
         return div.innerHTML;
     }
 
@@ -201,6 +275,71 @@
         return searchMode === "category" ? selectedCategory : (nameInput.value || "").trim();
     }
 
+    // ========== Saved UI ==========
+    function refreshSavedUI() {
+        // Badge
+        if (savedPlaces.length > 0) {
+            savedBadge.textContent = savedPlaces.length;
+            savedBadge.classList.remove("hidden");
+        } else {
+            savedBadge.classList.add("hidden");
+        }
+        savedBtn.classList.toggle("active", showingSaved);
+
+        // Panel
+        if (showingSaved) {
+            savedPanel.classList.remove("hidden");
+            searchPanel.classList.add("hidden");
+            savedCount.textContent = savedPlaces.length + " place" + (savedPlaces.length !== 1 ? "s" : "") + " saved";
+            clearAllBtn.classList.toggle("hidden", savedPlaces.length === 0);
+
+            if (savedPlaces.length === 0) {
+                savedList.innerHTML = '<div class="saved-empty"><div style="font-size:28px;margin-bottom:8px;">☆</div><p>No saved places yet. Search for shops and tap ☆ to save them here.</p></div>';
+            } else {
+                savedList.innerHTML = savedPlaces.map(function(item, i) {
+                    return renderCard(item, item.icon, true);
+                }).join("");
+                attachSaveButtons();
+            }
+        } else {
+            savedPanel.classList.add("hidden");
+            searchPanel.classList.remove("hidden");
+        }
+    }
+
+    function refreshResultSaveButtons() {
+        // Update save buttons in search results
+        var btns = resultsDiv.querySelectorAll(".save-btn");
+        btns.forEach(function(btn) {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var item = currentResults[idx];
+            if (item) {
+                var saved = isSavedItem(item);
+                btn.textContent = saved ? "★" : "☆";
+                btn.className = "save-btn " + (saved ? "saved" : "unsaved");
+            }
+        });
+    }
+
+    // ========== Toggle saved panel ==========
+    savedBtn.addEventListener("click", function() {
+        showingSaved = !showingSaved;
+        if (showingSaved) {
+            emptyState.style.display = "none";
+        }
+        refreshSavedUI();
+    });
+
+    clearAllBtn.addEventListener("click", function() {
+        if (confirm("Remove all saved places?")) {
+            savedPlaces = [];
+            persistSaved();
+            refreshSavedUI();
+            refreshResultSaveButtons();
+        }
+    });
+
+    // ========== UI update ==========
     function updateUI() {
         document.getElementById("locationWrapper").classList.toggle("hidden", shopType !== "physical");
         document.getElementById("searchModeWrapper").classList.toggle("hidden", !shopType);
@@ -223,22 +362,20 @@
         hintArea.innerHTML = hint ? '<p class="hint">' + hint + '</p>' : '';
     }
 
-    // Shop type buttons
+    // ========== Shop type buttons ==========
     document.getElementById("btnPhysical").addEventListener("click", function() { shopType = "physical"; updateUI(); });
     document.getElementById("btnOnline").addEventListener("click", function() { shopType = "online"; updateUI(); });
 
-    // Search mode buttons
     document.getElementById("btnCategory").addEventListener("click", function() { searchMode = "category"; updateUI(); });
     document.getElementById("btnName").addEventListener("click", function() { searchMode = "name"; updateUI(); });
 
-    // Shop name input
     nameInput.addEventListener("input", function() {
         nameClear.style.display = nameInput.value ? "block" : "none";
         updateUI();
     });
     nameClear.addEventListener("click", function() { nameInput.value = ""; nameClear.style.display = "none"; updateUI(); });
 
-    // Dropdown setup
+    // ========== Dropdowns ==========
     function setupDropdown(inputEl, listEl, clearEl, items, onSelect, getSelected) {
         function render(filter) {
             var f = (filter || "").toLowerCase();
@@ -283,32 +420,48 @@
         CATEGORIES, function(val) { selectedCategory = val; }, function() { return selectedCategory; }
     );
 
-    // Worker search
-    async function searchWorker(query, limit) {
-        limit = limit || RESULT_LIMIT;
-        try {
-            var response = await fetch(WORKER_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query: query, limit: limit })
-            });
-            var data = await response.json();
-            if (data.error) return [];
-            return (data.results || []).slice(0, limit);
-        } catch (e) { return []; }
-    }
-
-    // Render card (unified - icon for physical, url for online)
-    function renderCard(r, icon) {
+    // ========== Card rendering ==========
+    function renderCard(r, icon, isSavedCard) {
+        var itemSaved = isSavedItem(r);
         var iconHtml = icon ? '<div class="category-icon">' + icon + '</div>' : '';
         var urlHtml = icon ? '' : '<div class="result-url">' + escapeHtml(r.displayUrl || r.url) + '</div>';
-        return '<a href="' + r.url + '" target="_blank" rel="noopener noreferrer" class="result-card">' +
+        var btnClass = itemSaved ? "save-btn saved" : "save-btn unsaved";
+        var btnText = itemSaved ? "★" : "☆";
+        var dataAttr = isSavedCard
+            ? 'data-saved-name="' + escapeHtml(r.name) + '" data-saved-url="' + escapeHtml(r.url) + '"'
+            : 'data-idx="' + currentResults.indexOf(r) + '"';
+
+        return '<div class="result-card">' +
             iconHtml +
-            '<div class="card-text">' +
+            '<a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener noreferrer">' +
                 '<div class="result-name">' + escapeHtml(r.name) + '</div>' +
                 '<div class="result-snippet">' + escapeHtml(r.snippet) + '</div>' +
                 urlHtml +
-            '</div></a>';
+            '</a>' +
+            '<button class="' + btnClass + '" ' + dataAttr + ' title="' + (itemSaved ? "Remove from saved" : "Save this shop") + '">' + btnText + '</button>' +
+        '</div>';
+    }
+
+    function attachSaveButtons() {
+        document.querySelectorAll(".save-btn").forEach(function(btn) {
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                var savedName = btn.getAttribute("data-saved-name");
+                var savedUrl = btn.getAttribute("data-saved-url");
+                if (savedName !== null) {
+                    // Button in saved panel — remove
+                    removeSaved({ name: savedName, url: savedUrl });
+                } else {
+                    // Button in results — toggle
+                    var idx = parseInt(btn.getAttribute("data-idx"));
+                    var item = currentResults[idx];
+                    if (item) {
+                        if (isSavedItem(item)) removeSaved(item);
+                        else addSaved(item);
+                    }
+                }
+            };
+        });
     }
 
     function renderSectionHeader(icon, title, color, id) {
@@ -326,13 +479,30 @@
         if (spinnerEl) spinnerEl.remove();
     }
 
-    // Main search
+    // ========== Worker search ==========
+    async function searchWorker(query, limit) {
+        limit = limit || RESULT_LIMIT;
+        try {
+            var response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query, limit: limit })
+            });
+            var data = await response.json();
+            if (data.error) return [];
+            return (data.results || []).slice(0, limit);
+        } catch (e) { return []; }
+    }
+
+    // ========== Main search ==========
     searchBtn.addEventListener("click", async function() {
         var term = getSearchTerm();
         if (!term || !shopType || isSearching) return;
         if (shopType === "physical" && !selectedLocation) return;
 
         isSearching = true;
+        showingSaved = false;
+        refreshSavedUI();
         updateUI();
         emptyState.style.display = "none";
 
@@ -348,9 +518,11 @@
             query = searchMode === "category" ? selectedLocation + " " + term : term;
             results = await searchWorker(query, RESULT_LIMIT);
             var icon = CATEGORY_ICONS[term] || "🛍️";
+            results = results.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
+            currentResults = results;
             updateSection("results", results.length);
             document.getElementById("results-list").innerHTML = results.length > 0
-                ? results.map(function(r) { return renderCard(r, icon); }).join("")
+                ? results.map(function(r) { return renderCard(r, icon, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
         } else {
             query = "site:etsy.com/uk/shop " + term;
@@ -366,17 +538,21 @@
                 .map(function(item) {
                     return { name: item.name, snippet: item.snippet, displayUrl: item.url, url: etsyAffiliateUrl(item.url) };
                 });
+            currentResults = results;
             updateSection("results", results.length);
             document.getElementById("results-list").innerHTML = results.length > 0
-                ? results.map(function(r) { return renderCard(r, null); }).join("")
+                ? results.map(function(r) { return renderCard(r, null, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
         }
 
+        attachSaveButtons();
         isSearching = false;
         updateUI();
     });
 
+    // ========== Init ==========
     updateUI();
+    refreshSavedUI();
     </script>
 </body>
 </html>
