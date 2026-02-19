@@ -444,6 +444,7 @@
                 "&num=" + Math.min(limit, 10);
             var response = await fetch(url);
             var data = await response.json();
+            if (data.error) return [{ name: "API Error", url: "#", snippet: data.error.message || JSON.stringify(data.error) }];
             if (!data.items) return [];
             return data.items.map(function(item) {
                 return {
@@ -452,7 +453,7 @@
                     snippet: item.snippet || ""
                 };
             }).slice(0, limit);
-        } catch(e) { return []; }
+        } catch(e) { return [{ name: "Error", url: "#", snippet: e.message }]; }
     }
 
     // ========== Card rendering ==========
@@ -545,17 +546,12 @@
         } else {
             var etsyQuery = "uk shop " + term;
             var rawEtsy = await searchEtsy(etsyQuery, RESULT_LIMIT);
-            results = rawEtsy
-                .map(function(item) {
-                    var url = item.url || "";
-                    var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
-                    if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
-                    return { name: item.name, snippet: item.snippet, url: url };
-                })
-                .filter(function(item) { return /etsy\.com.*\/shop\//.test(item.url); })
-                .map(function(item) {
-                    return { name: item.name, snippet: item.snippet, displayUrl: item.url, url: etsyAffiliateUrl(item.url) };
-                });
+            results = rawEtsy.map(function(item) {
+                var url = item.url || "";
+                var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
+                if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
+                return { name: item.name, snippet: item.snippet, displayUrl: url, url: etsyAffiliateUrl(url) };
+            });
             currentResults = results;
             updateSection("results", results.length);
             document.getElementById("results-list").innerHTML = results.length > 0
