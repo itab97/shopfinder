@@ -173,7 +173,8 @@
     // SETTINGS
     // ========================================
     var GOOGLE_PLACES_API_KEY = "AIzaSyCsm5h-xdvVbeuYRIY3YEUoJiQIs3VDYdA";
-    var WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
+    var GOOGLE_SEARCH_API_KEY = "AIzaSyCsm5h-xdvVbeuYRIY3YEUoJiQIs3VDYdA";
+    var GOOGLE_SEARCH_CX = "f6dcc7150aad04289";
     var AWIN_PUBLISHER_ID = "000000";
     var AWIN_ETSY_ADVERTISER_ID = "6220";
     var RESULT_LIMIT = 10;
@@ -433,19 +434,25 @@
         } catch(e) { return []; }
     }
 
-    // ========== Worker — Etsy online shops ==========
-    async function searchWorker(query, limit) {
+    // ========== Google Custom Search API — Etsy online shops ==========
+    async function searchEtsy(query, limit) {
         limit = limit || RESULT_LIMIT;
         try {
-            var response = await fetch(WORKER_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ query: query, limit: limit })
-            });
+            var url = "https://www.googleapis.com/customsearch/v1?key=" + GOOGLE_SEARCH_API_KEY +
+                "&cx=" + GOOGLE_SEARCH_CX +
+                "&q=" + encodeURIComponent(query) +
+                "&num=" + Math.min(limit, 10);
+            var response = await fetch(url);
             var data = await response.json();
-            if (data.error) return [];
-            return (data.results || []).slice(0, limit);
-        } catch (e) { return []; }
+            if (!data.items) return [];
+            return data.items.map(function(item) {
+                return {
+                    name: (item.title || "").replace(/ \| Etsy.*$/i, "").replace(/ - Etsy.*$/i, "").trim(),
+                    url: item.link || "#",
+                    snippet: item.snippet || ""
+                };
+            }).slice(0, limit);
+        } catch(e) { return []; }
     }
 
     // ========== Card rendering ==========
@@ -536,8 +543,8 @@
                 ? results.map(function(r) { return renderCard(r, icon, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
         } else {
-            var etsyQuery = "site:etsy.com/uk/shop " + term;
-            var rawEtsy = await searchWorker(etsyQuery, RESULT_LIMIT);
+            var etsyQuery = "uk shop " + term;
+            var rawEtsy = await searchEtsy(etsyQuery, RESULT_LIMIT);
             results = rawEtsy
                 .map(function(item) {
                     var url = item.url || "";
