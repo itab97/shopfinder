@@ -71,6 +71,13 @@
 
         .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'DM Sans', sans-serif; }
         .clear-all-btn:hover { border-color: #ccc; color: #666; }
+        .share-btn { background: #1a1a2e; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #e8d5b7; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+        .share-btn:hover { background: #2a2a4e; }
+        .shared-view { background: #fff; border-radius: 10px; border: 1px solid #e0dbd2; padding: 20px; margin-bottom: 16px; }
+        .shared-view h2 { font-family: 'Playfair Display', serif; font-size: 20px; color: #1a1a2e; margin-bottom: 4px; }
+        .shared-view .shared-meta { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+        .shared-view .shared-back { display: inline-block; margin-top: 16px; font-size: 13px; color: #c9a96e; text-decoration: none; font-weight: 600; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8d5b7; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 
         .saved-empty { text-align: center; padding: 24px 16px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
         .saved-empty p { font-size: 13px; color: #aaa; margin: 0; }
@@ -113,8 +120,19 @@
                     <div class="section-count" id="listCount">0 places saved</div>
                 </div>
                 <button class="clear-all-btn hidden" id="clearListBtn">Clear all</button>
+                <button class="share-btn hidden" id="shareListBtn">📤 Share</button>
             </div>
             <div id="listItems"></div>
+        </div>
+
+        <!-- Shared list view (for people opening a shared link) -->
+        <div class="hidden" id="sharedView">
+            <div class="shared-view">
+                <h2 id="sharedTitle"></h2>
+                <div class="shared-meta" id="sharedMeta"></div>
+                <div id="sharedItems"></div>
+                <a href="#" class="shared-back" id="sharedBackBtn">← Start finding your own shops</a>
+            </div>
         </div>
 
         <div id="searchPanel">
@@ -185,6 +203,7 @@
 
         <p class="disclosure">As an Etsy &amp; Amazon Affiliate, we earn from qualifying purchases.</p>
     </div>
+    <div class="toast" id="toast"></div>
 
     <script>
     // ========================================
@@ -352,6 +371,7 @@
         document.getElementById("listNameInput").classList.add("hidden");
         document.getElementById("listCount").textContent = l.items.length + " place" + (l.items.length !== 1 ? "s" : "") + " saved";
         document.getElementById("clearListBtn").classList.toggle("hidden", l.items.length === 0);
+        document.getElementById("shareListBtn").classList.toggle("hidden", l.items.length === 0);
 
         var listItems = document.getElementById("listItems");
         if (l.items.length === 0) {
@@ -394,6 +414,99 @@
             lists[activeList].items = [];
             persistLists(); refreshListButtons(); refreshListPanel(); refreshResultSaveButtons();
         }
+    });
+
+    // ========== Toast ==========
+    function showToast(msg) {
+        var t = document.getElementById("toast");
+        t.textContent = msg;
+        t.style.opacity = "1";
+        setTimeout(function() { t.style.opacity = "0"; }, 2200);
+    }
+
+    // ========== Share list ==========
+    function encodeListForShare(listObj) {
+        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "" }; }) };
+        return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+    }
+
+    function decodeSharedList(encoded) {
+        try {
+            var json = decodeURIComponent(escape(atob(encoded)));
+            var d = JSON.parse(json);
+            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s }; }) };
+        } catch(e) { return null; }
+    }
+
+    document.getElementById("shareListBtn").addEventListener("click", function() {
+        if (activeList < 0) return;
+        var l = lists[activeList];
+        var encoded = encodeListForShare(l);
+        var baseUrl = window.location.origin + window.location.pathname;
+        var shareUrl = baseUrl + "#shared=" + encoded;
+
+        if (shareUrl.length > 8000) {
+            showToast("List is too large to share via link. Try removing some items.");
+            return;
+        }
+
+        var shareData = { title: l.name + " — ShopFinder UK", text: "Check out my ShopFinder list: " + l.name, url: shareUrl };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(function() {});
+        } else {
+            navigator.clipboard.writeText(shareUrl).then(function() {
+                showToast("Link copied to clipboard!");
+            }).catch(function() {
+                // Fallback: select from a temp input
+                var tmp = document.createElement("input");
+                tmp.value = shareUrl;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand("copy");
+                document.body.removeChild(tmp);
+                showToast("Link copied to clipboard!");
+            });
+        }
+    });
+
+    // ========== Shared view (for recipients) ==========
+    function checkForSharedList() {
+        var hash = window.location.hash;
+        if (!hash || hash.indexOf("#shared=") !== 0) return false;
+        var encoded = hash.substring(8);
+        var shared = decodeSharedList(encoded);
+        if (!shared || !shared.items || shared.items.length === 0) return false;
+
+        // Hide normal UI, show shared view
+        document.getElementById("listButtons").classList.add("hidden");
+        document.getElementById("searchPanel").classList.add("hidden");
+        document.getElementById("emptyState").style.display = "none";
+        document.getElementById("sharedView").classList.remove("hidden");
+
+        document.getElementById("sharedTitle").textContent = shared.name;
+        document.getElementById("sharedMeta").textContent = shared.items.length + " place" + (shared.items.length !== 1 ? "s" : "") + " shared with you";
+
+        var sharedItemsDiv = document.getElementById("sharedItems");
+        sharedItemsDiv.innerHTML = shared.items.map(function(item) {
+            return '<div class="result-card">' +
+                '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
+                    '<div class="result-name">' + escapeHtml(item.name) + '</div>' +
+                    '<div class="result-snippet">' + escapeHtml(item.snippet) + '</div>' +
+                '</a></div>';
+        }).join("");
+
+        return true;
+    }
+
+    document.getElementById("sharedBackBtn").addEventListener("click", function(e) {
+        e.preventDefault();
+        history.replaceState(null, "", window.location.pathname);
+        document.getElementById("sharedView").classList.add("hidden");
+        document.getElementById("listButtons").classList.remove("hidden");
+        document.getElementById("searchPanel").classList.remove("hidden");
+        document.getElementById("emptyState").style.display = "";
+        updateUI();
     });
 
     // ========== Save popup ==========
@@ -759,7 +872,8 @@
     });
 
     // ========== Init ==========
-    updateUI();
+    var isSharedView = checkForSharedList();
+    if (!isSharedView) updateUI();
     </script>
 </body>
 </html>
