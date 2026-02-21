@@ -112,12 +112,12 @@
                 <label class="field-label field-label-mb8">Search for</label>
                 <div class="toggle-row">
                     <button class="toggle-btn" id="btnPhysical" data-type="physical">
-                        <div class="label">🏪 Shops in your city</div>
+                        <div class="label">🏪 In your city</div>
                         <div class="sublabel">Experiences close by</div>
                     </button>
                     <button class="toggle-btn" id="btnOnline" data-type="online">
-                        <div class="label">🌐 Online shops in the UK</div>
-                        <div class="sublabel">Low shipping costs</div>
+                        <div class="label">🌐 Online</div>
+                        <div class="sublabel">Shipping to the UK</div>
                     </button>
                 </div>
             </div>
@@ -135,7 +135,15 @@
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
                     <button class="toggle-btn-sm active" id="btnCategory">Category</button>
-                    <button class="toggle-btn-sm" id="btnName">Shop name</button>
+                    <button class="toggle-btn-sm" id="btnName">Name</button>
+                </div>
+            </div>
+
+            <div class="hidden" id="categoryTypeWrapper">
+                <label class="field-label field-label-mb8">Category type</label>
+                <div class="toggle-row-sm">
+                    <button class="toggle-btn-sm" id="btnShops">🛍️ Shops</button>
+                    <button class="toggle-btn-sm" id="btnFood">🍽️ Food & Drink</button>
                 </div>
             </div>
 
@@ -149,7 +157,7 @@
             </div>
 
             <div class="text-input-wrapper hidden" id="nameWrapper">
-                <label class="field-label">Shop name</label>
+                <label class="field-label">Name</label>
                 <div style="position:relative;">
                     <input type="text" class="text-input" id="nameInput" placeholder="e.g. The Chocolate Factory, Bob's Books..." />
                     <button class="text-clear" id="nameClear" style="display:none;">×</button>
@@ -165,7 +173,7 @@
             </div>
         </div>
 
-        <p class="disclosure">As an Etsy Affiliate, we earn from qualifying purchases.</p>
+        <p class="disclosure">As an Etsy &amp; Amazon Affiliate, we earn from qualifying purchases.</p>
     </div>
 
     <script>
@@ -176,6 +184,7 @@
     var WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
     var AWIN_PUBLISHER_ID = "000000";
     var AWIN_ETSY_ADVERTISER_ID = "6220";
+    var AMAZON_ASSOCIATE_ID = "YOUR-ASSOCIATE-ID-21"; // Replace with your Amazon Associate tag
     var RESULT_LIMIT = 10;
     var STORAGE_KEY = "shopfinder_saved";
 
@@ -183,21 +192,32 @@
         return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID + "&awinaffid=" + AWIN_PUBLISHER_ID + "&ued=" + encodeURIComponent(url);
     }
 
-    var CATEGORY_ICONS = {
+    function amazonAffiliateUrl(url) {
+        try {
+            var u = new URL(url);
+            u.searchParams.set("tag", AMAZON_ASSOCIATE_ID);
+            return u.toString();
+        } catch(e) { return url; }
+    }
+
+    var SHOP_CATEGORIES = {
         "Animals & Pets":"🐾","Antiques":"🏺","Arts and Crafts":"🎨",
-        "Bakery":"🍞","Beauty & Make-up":"💄","Beer, Wine & Spirits":"🍷",
-        "Booksellers":"📚","Cars & Motorbikes":"🚗",
-        "Charity":"💛","Chocolatier":"🍫",
-        "Comics & Manga":"💬","Computers and Televisions":"💻",
-        "Delicatessen":"🥖","Fashion & Clothing":"👗",
-        "Footwear":"👟","Gardening":"🌱",
-        "Haberdashery (Sewing & Knitting)":"🧵",
+        "Beauty & Make-up":"💄","Beer, Wine & Spirits":"🍷","Booksellers":"📚",
+        "Cars & Motorbikes":"🚗","Charity":"💛","Chocolatier":"🍫",
+        "Comics & Manga":"💬","Computing":"💻",
+        "Fashion & Clothing":"👗","Film & Television":"🎬","Footwear":"👟",
+        "Gardening":"🌱","Haberdashery (Sewing & Knitting)":"🧵",
         "Jewellery":"💎","Meat, Fish & Cheeses":"🥩",
         "Painting & Photography":"🖼️",
         "Sports & Fitness":"⚽","Sweets & Confectionary":"🍬",
         "Tea and Coffee":"☕","Toys & Games":"🧸","Video Games":"🎮"
     };
-    var CATEGORIES = Object.keys(CATEGORY_ICONS);
+    var FOOD_CATEGORIES = {
+        "Bakeries":"🍞","Bars":"🍸","Cafés and Tearooms":"☕",
+        "Chinese Food":"🥡","Desserts":"🍰","Greek Food":"🫒",
+        "Indian Food":"🍛","Italian Food":"🍕","Pubs":"🍺"
+    };
+    var ALL_CATEGORY_ICONS = Object.assign({}, SHOP_CATEGORIES, FOOD_CATEGORIES);
     var UK_LOCATIONS = [
         "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
         "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
@@ -235,11 +255,14 @@
     // ========== State ==========
     var shopType = "";
     var searchMode = "category";
+    var categoryType = "";
     var selectedLocation = "";
     var selectedCategory = "";
     var isSearching = false;
     var showingSaved = false;
     var currentResults = [];
+    var currentEtsyResults = [];
+    var currentAmazonResults = [];
 
     // ========== DOM refs ==========
     var searchBtn = document.getElementById("searchBtn");
@@ -299,10 +322,10 @@
     function refreshResultSaveButtons() {
         var btns = resultsDiv.querySelectorAll(".save-btn");
         btns.forEach(function(btn) {
-            var idx = parseInt(btn.getAttribute("data-idx"));
-            var item = currentResults[idx];
-            if (item) {
-                var s = isSavedItem(item);
+            var name = btn.getAttribute("data-card-name");
+            var url = btn.getAttribute("data-card-url");
+            if (name && url) {
+                var s = isSavedItem({ name: name, url: url });
                 btn.textContent = s ? "★" : "☆";
                 btn.className = "save-btn " + (s ? "saved" : "unsaved");
             }
@@ -325,13 +348,16 @@
     function updateUI() {
         document.getElementById("locationWrapper").classList.toggle("hidden", shopType !== "physical");
         document.getElementById("searchModeWrapper").classList.toggle("hidden", !shopType);
-        document.getElementById("categoryWrapper").classList.toggle("hidden", !shopType || searchMode !== "category");
+        document.getElementById("categoryTypeWrapper").classList.toggle("hidden", !shopType || searchMode !== "category");
+        document.getElementById("categoryWrapper").classList.toggle("hidden", !shopType || searchMode !== "category" || !categoryType);
         document.getElementById("nameWrapper").classList.toggle("hidden", !shopType || searchMode !== "name");
 
         document.getElementById("btnPhysical").classList.toggle("active", shopType === "physical");
         document.getElementById("btnOnline").classList.toggle("active", shopType === "online");
         document.getElementById("btnCategory").classList.toggle("active", searchMode === "category");
         document.getElementById("btnName").classList.toggle("active", searchMode === "name");
+        document.getElementById("btnShops").classList.toggle("active", categoryType === "shops");
+        document.getElementById("btnFood").classList.toggle("active", categoryType === "food");
 
         var term = getSearchTerm();
         var canSearch = term && shopType && (shopType === "online" || selectedLocation);
@@ -349,6 +375,20 @@
     document.getElementById("btnOnline").addEventListener("click", function() { shopType = "online"; updateUI(); });
     document.getElementById("btnCategory").addEventListener("click", function() { searchMode = "category"; updateUI(); });
     document.getElementById("btnName").addEventListener("click", function() { searchMode = "name"; updateUI(); });
+    document.getElementById("btnShops").addEventListener("click", function() {
+        categoryType = "shops"; selectedCategory = "";
+        document.getElementById("categoryInput").value = "";
+        document.getElementById("categoryClear").style.display = "none";
+        refreshCategoryDropdown();
+        updateUI();
+    });
+    document.getElementById("btnFood").addEventListener("click", function() {
+        categoryType = "food"; selectedCategory = "";
+        document.getElementById("categoryInput").value = "";
+        document.getElementById("categoryClear").style.display = "none";
+        refreshCategoryDropdown();
+        updateUI();
+    });
 
     nameInput.addEventListener("input", function() {
         nameClear.style.display = nameInput.value ? "block" : "none";
@@ -396,10 +436,51 @@
         document.getElementById("locationInput"), document.getElementById("locationList"), document.getElementById("locationClear"),
         UK_LOCATIONS, function(val) { selectedLocation = val; }, function() { return selectedLocation; }
     );
-    setupDropdown(
-        document.getElementById("categoryInput"), document.getElementById("categoryList"), document.getElementById("categoryClear"),
-        CATEGORIES, function(val) { selectedCategory = val; }, function() { return selectedCategory; }
-    );
+
+    // Dynamic category dropdown — items change based on categoryType
+    var catInput = document.getElementById("categoryInput");
+    var catList = document.getElementById("categoryList");
+    var catClear = document.getElementById("categoryClear");
+
+    function getCategoryItems() {
+        return categoryType === "food" ? Object.keys(FOOD_CATEGORIES) : Object.keys(SHOP_CATEGORIES);
+    }
+
+    function renderCategoryList(filter) {
+        var items = getCategoryItems();
+        var f = (filter || "").toLowerCase();
+        var matched = items.filter(function(item) { return item.toLowerCase().indexOf(f) !== -1; });
+        if (matched.length === 0) {
+            catList.innerHTML = '<div class="dropdown-empty">No matches</div>';
+        } else {
+            catList.innerHTML = matched.map(function(item) {
+                return '<div class="dropdown-item">' + escapeHtml(item) + '</div>';
+            }).join("");
+            catList.querySelectorAll(".dropdown-item").forEach(function(el) {
+                el.addEventListener("mousedown", function(e) {
+                    e.preventDefault();
+                    selectedCategory = el.textContent;
+                    catInput.value = el.textContent;
+                    catClear.style.display = "block";
+                    catList.classList.remove("open");
+                    updateUI();
+                });
+            });
+        }
+    }
+
+    function refreshCategoryDropdown() { renderCategoryList(""); }
+
+    catInput.addEventListener("focus", function() { catInput.value = ""; renderCategoryList(""); catList.classList.add("open"); });
+    catInput.addEventListener("input", function() { renderCategoryList(catInput.value); catList.classList.add("open"); });
+    catInput.addEventListener("blur", function() {
+        setTimeout(function() {
+            catList.classList.remove("open");
+            if (selectedCategory) { catInput.value = selectedCategory; catClear.style.display = "block"; }
+            else { catInput.value = ""; catClear.style.display = "none"; }
+        }, 150);
+    });
+    catClear.addEventListener("click", function() { selectedCategory = ""; catInput.value = ""; catClear.style.display = "none"; updateUI(); });
 
     // ========== Google Places API — physical shops ==========
     async function searchPlaces(query, limit) {
@@ -433,8 +514,8 @@
         } catch(e) { return []; }
     }
 
-    // ========== Worker → Brave Search — Etsy online shops ==========
-    async function searchEtsy(query, limit) {
+    // ========== Worker → Brave Search — Etsy + Amazon ==========
+    async function searchWorker(query, limit) {
         limit = limit || RESULT_LIMIT;
         try {
             var response = await fetch(WORKER_URL, {
@@ -455,9 +536,8 @@
         var urlHtml = icon ? '' : '<div class="result-url">' + escapeHtml(r.displayUrl || r.url) + '</div>';
         var btnClass = itemSaved ? "save-btn saved" : "save-btn unsaved";
         var btnText = itemSaved ? "★" : "☆";
-        var dataAttr = isSavedCard
-            ? 'data-saved-name="' + escapeHtml(r.name) + '" data-saved-url="' + escapeHtml(r.url) + '"'
-            : 'data-idx="' + currentResults.indexOf(r) + '"';
+        var dataAttr = 'data-card-name="' + escapeHtml(r.name) + '" data-card-url="' + escapeHtml(r.url) + '" data-card-snippet="' + escapeHtml(r.snippet || "") + '"';
+        if (isSavedCard) dataAttr += ' data-is-saved="1"';
 
         return '<div class="result-card">' +
             iconHtml +
@@ -474,18 +554,12 @@
         document.querySelectorAll(".save-btn").forEach(function(btn) {
             btn.onclick = function(e) {
                 e.stopPropagation();
-                var savedName = btn.getAttribute("data-saved-name");
-                var savedUrl = btn.getAttribute("data-saved-url");
-                if (savedName !== null) {
-                    removeSaved({ name: savedName, url: savedUrl });
-                } else {
-                    var idx = parseInt(btn.getAttribute("data-idx"));
-                    var item = currentResults[idx];
-                    if (item) {
-                        if (isSavedItem(item)) removeSaved(item);
-                        else addSaved(item);
-                    }
-                }
+                var name = btn.getAttribute("data-card-name");
+                var url = btn.getAttribute("data-card-url");
+                var snippet = btn.getAttribute("data-card-snippet") || "";
+                var item = { name: name, url: url, snippet: snippet };
+                if (isSavedItem(item)) removeSaved(item);
+                else addSaved(item);
             };
         });
     }
@@ -516,43 +590,79 @@
         refreshSavedUI();
         updateUI();
         emptyState.style.display = "none";
+        currentResults = [];
+        currentEtsyResults = [];
+        currentAmazonResults = [];
 
-        var sectionIcon = shopType === "physical" ? "🏪" : "🌐";
-        var sectionTitle = shopType === "physical" ? "Shops in " + escapeHtml(selectedLocation) : "Online shops";
-        var sectionColor = shopType === "physical" ? "#2ecc71" : "#8e44ad";
-
-        resultsDiv.innerHTML = renderSectionHeader(sectionIcon, sectionTitle, sectionColor, "results") +
-            '<div id="results-list"></div>';
-
-        var results;
         if (shopType === "physical") {
+            resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(selectedLocation), "#2ecc71", "physical") +
+                '<div id="results-physical"></div>';
+
             var query = selectedLocation + " " + term;
-            var icon = CATEGORY_ICONS[term] || "🛍️";
+            var icon = ALL_CATEGORY_ICONS[term] || "🛍️";
             var raw = await searchPlaces(query, RESULT_LIMIT);
-            results = raw.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
+            var results = raw.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
             currentResults = results;
-            updateSection("results", results.length);
-            document.getElementById("results-list").innerHTML = results.length > 0
+            updateSection("physical", results.length);
+            document.getElementById("results-physical").innerHTML = results.length > 0
                 ? results.map(function(r) { return renderCard(r, icon, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
-        } else {
-            var rawEtsy = await searchEtsy(term, RESULT_LIMIT);
-            results = rawEtsy.map(function(item) {
-                var url = item.url || "";
-                var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
-                if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
-                return { name: item.name, snippet: item.snippet, displayUrl: url, url: etsyAffiliateUrl(url) };
-            });
-            currentResults = results;
-            updateSection("results", results.length);
-            document.getElementById("results-list").innerHTML = results.length > 0
-                ? results.map(function(r) { return renderCard(r, null, false); }).join("")
-                : '<p class="no-results">No results found. Try a different search.</p>';
-        }
 
-        attachSaveButtons();
-        isSearching = false;
-        updateUI();
+            attachSaveButtons();
+            isSearching = false;
+            updateUI();
+        } else {
+            // Set up both sections with spinners
+            resultsDiv.innerHTML =
+                renderSectionHeader("🧶", "Etsy shops", "#f56400", "etsy") +
+                '<div id="results-etsy"></div>' +
+                renderSectionHeader("📦", "Amazon stores", "#ff9900", "amazon") +
+                '<div id="results-amazon"></div>';
+
+            // Run both searches in parallel
+            var etsyDone = false, amazonDone = false;
+            function checkDone() {
+                if (etsyDone && amazonDone) {
+                    currentResults = currentEtsyResults.concat(currentAmazonResults);
+                    attachSaveButtons();
+                    isSearching = false;
+                    updateUI();
+                }
+            }
+
+            searchWorker("site:etsy.com/uk/shop " + term, RESULT_LIMIT).then(function(rawEtsy) {
+                var etsyResults = rawEtsy.map(function(item) {
+                    var url = item.url || "";
+                    var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
+                    if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
+                    return { name: (item.name || "").replace(/ \| Etsy.*$/i, "").replace(/ - Etsy.*$/i, "").trim(), snippet: item.snippet, displayUrl: url, url: etsyAffiliateUrl(url) };
+                });
+                currentEtsyResults = etsyResults;
+                updateSection("etsy", etsyResults.length);
+                document.getElementById("results-etsy").innerHTML = etsyResults.length > 0
+                    ? etsyResults.map(function(r) { return renderCard(r, null, false); }).join("")
+                    : '<p class="no-results">No Etsy shops found.</p>';
+                attachSaveButtons();
+                etsyDone = true;
+                checkDone();
+            });
+
+            searchWorker("site:amazon.co.uk/stores " + term, RESULT_LIMIT).then(function(rawAmazon) {
+                var amazonResults = rawAmazon
+                    .filter(function(item) { return /amazon\.co\.uk\/stores/.test(item.url || ""); })
+                    .map(function(item) {
+                        return { name: (item.name || "").replace(/ - Amazon\.co\.uk$/i, "").replace(/ ?: ?Amazon\.co\.uk.*$/i, "").trim(), snippet: item.snippet, displayUrl: item.url, url: amazonAffiliateUrl(item.url) };
+                    });
+                currentAmazonResults = amazonResults;
+                updateSection("amazon", amazonResults.length);
+                document.getElementById("results-amazon").innerHTML = amazonResults.length > 0
+                    ? amazonResults.map(function(r) { return renderCard(r, null, false); }).join("")
+                    : '<p class="no-results">No Amazon stores found.</p>';
+                attachSaveButtons();
+                amazonDone = true;
+                checkDone();
+            });
+        }
     });
 
     // ========== Init ==========
