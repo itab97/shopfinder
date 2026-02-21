@@ -31,8 +31,11 @@
         .toggle-btn.active .sublabel { color: rgba(232,213,183,0.6); }
 
         .toggle-row-sm { display: flex; gap: 6px; margin-bottom: 12px; }
-        .toggle-btn-sm { flex: 1; padding: 9px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+        .toggle-btn-sm { flex: 1; padding: 9px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: 'DM Sans', sans-serif; position: relative; }
         .toggle-btn-sm.active { border-color: #1a1a2e; background: #1a1a2e; color: #e8d5b7; }
+        .toggle-btn-sm .tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8d5b7; font-size: 12px; font-weight: 400; padding: 8px 12px; border-radius: 8px; white-space: normal; width: 240px; text-align: center; line-height: 1.4; z-index: 100; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .toggle-btn-sm .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1a1a2e; }
+        .toggle-btn-sm:hover .tooltip { display: block; }
 
         .dropdown-wrapper { position: relative; margin-bottom: 12px; }
         .dropdown-input { width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px; border: 2px solid #e0dbd2; font-size: 15px; outline: none; background: #fff; font-family: 'DM Sans', sans-serif; }
@@ -163,7 +166,7 @@
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
                     <button class="toggle-btn-sm active" id="btnCategory">Category</button>
-                    <button class="toggle-btn-sm" id="btnName">Name</button>
+                    <button class="toggle-btn-sm" id="btnName">Name<span class="tooltip">Write the name of a specific shop or restaurant, or paste the URL of an Etsy or Amazon shop</span></button>
                 </div>
             </div>
 
