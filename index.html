@@ -651,7 +651,7 @@
                 var amazonResults = rawAmazon
                     .filter(function(item) { return /amazon\.co\.uk\/stores/.test(item.url || ""); })
                     .map(function(item) {
-                        return { name: (item.name || "").replace(/ - Amazon\.co\.uk$/i, "").replace(/ ?: ?Amazon\.co\.uk.*$/i, "").trim(), snippet: item.snippet, displayUrl: item.url, url: amazonAffiliateUrl(item.url) };
+                        return { name: (item.name || "").replace(/^Amazon\.co\.uk\s*[:\-–]\s*/i, "").replace(/ - Amazon\.co\.uk$/i, "").replace(/ ?: ?Amazon\.co\.uk.*$/i, "").trim(), snippet: item.snippet, displayUrl: item.url, url: amazonAffiliateUrl(item.url) };
                     });
                 currentAmazonResults = amazonResults;
                 updateSection("amazon", amazonResults.length);
