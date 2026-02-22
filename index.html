@@ -198,10 +198,6 @@
             <button class="search-btn" id="searchBtn" disabled>Search</button>
             <div id="hintArea"></div>
             <div id="resultsDiv"></div>
-            <div class="empty-state" id="emptyState">
-                <div class="icon">🔍</div>
-                <p>Choose a shop type and category to start searching</p>
-            </div>
         </div>
 
         <p class="disclosure">Results powered by Brave Search and Google Places.</p>
@@ -299,7 +295,6 @@
     // ========== DOM refs ==========
     var searchBtn = document.getElementById("searchBtn");
     var resultsDiv = document.getElementById("resultsDiv");
-    var emptyState = document.getElementById("emptyState");
     var hintArea = document.getElementById("hintArea");
     var nameInput = document.getElementById("nameInput");
     var nameClear = document.getElementById("nameClear");
@@ -335,7 +330,7 @@
                 activeList = activeList === idx ? -1 : idx;
                 refreshListButtons();
                 refreshListPanel();
-                if (activeList >= 0) emptyState.style.display = "none";
+                
             });
         });
     }
@@ -466,7 +461,7 @@
         // Hide normal UI, show shared view
         document.getElementById("listButtons").classList.add("hidden");
         document.getElementById("searchPanel").classList.add("hidden");
-        document.getElementById("emptyState").style.display = "none";
+        
         document.getElementById("sharedView").classList.remove("hidden");
 
         document.getElementById("sharedTitle").textContent = shared.name;
@@ -490,7 +485,7 @@
         document.getElementById("sharedView").classList.add("hidden");
         document.getElementById("listButtons").classList.remove("hidden");
         document.getElementById("searchPanel").classList.remove("hidden");
-        document.getElementById("emptyState").style.display = "";
+        
         updateUI();
     });
 
@@ -552,8 +547,7 @@
         searchBtn.textContent = isSearching ? "Searching..." : "Search";
 
         var hint = "";
-        if (!shopType) hint = "Choose a shop type above to get started";
-        else if (shopType === "physical" && !selectedLocation && term) hint = "Select a location to search for physical shops";
+        if (shopType === "physical" && !selectedLocation && term) hint = "Select a location to search for physical shops";
         hintArea.innerHTML = hint ? '<p class="hint">' + hint + '</p>' : '';
     }
 
@@ -780,7 +774,7 @@
         refreshListButtons();
         refreshListPanel();
         updateUI();
-        emptyState.style.display = "none";
+        
         currentResults = [];
 
         if (shopType === "physical") {
