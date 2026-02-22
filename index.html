@@ -3,42 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShopFinder UK</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>plaza</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'DM Sans', sans-serif; background: linear-gradient(160deg, #faf8f4 0%, #f0ece4 100%); min-height: 100vh; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: linear-gradient(160deg, #FCE7C8 0%, #f0ece4 100%); min-height: 100vh; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .header { background: #1a1a2e; padding: 40px 20px 36px; text-align: center; border-bottom: 3px solid #c9a96e; }
-        .header h1 { font-family: 'Playfair Display', serif; font-size: 30px; color: #e8d5b7; margin: 0 0 6px; letter-spacing: -0.5px; }
-        .header p { color: rgba(232,213,183,0.5); font-size: 14px; }
+        .header { background: #F0A04B; padding: 40px 20px 36px; text-align: center; border-bottom: 3px solid #c9a96e; }
+        .header h1 { font-family: 'Bitter', serif; font-size: 30px; color: #FCE7C8; margin: 0 0 6px; letter-spacing: -0.5px; }
+        .header p { color: #FCE7C8; font-size: 14px; }
         .container { max-width: 600px; margin: 0 auto; padding: 28px 20px; }
         .field-label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
         .field-label-mb8 { margin-bottom: 8px; }
 
-        .list-pill { flex-shrink: 0; padding: 8px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #1a1a2e; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: all 0.15s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+        .list-pill { flex-shrink: 0; padding: 8px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #F0A04B; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: all 0.15s; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
         .list-pill-active { border-color: #c9a96e; background: #faf6ee; }
-        .list-pill-badge { background: #1a1a2e; color: #e8d5b7; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
-        .save-popup-item { display: block; width: 100%; text-align: left; padding: 9px 14px; border: none; background: none; cursor: pointer; font-size: 13px; color: #1a1a2e; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+        .list-pill-badge { background: #F0A04B; color: #FADA7A; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+        .save-popup-item { display: block; width: 100%; text-align: left; padding: 9px 14px; border: none; background: none; cursor: pointer; font-size: 13px; color: #F0A04B; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; }
         .save-popup-item:hover { background: #faf6ee; }
 
         .toggle-row { display: flex; gap: 8px; margin-bottom: 16px; }
-        .toggle-btn { flex: 1; padding: 14px 12px; border-radius: 10px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; text-align: center; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
-        .toggle-btn.active { border-color: #1a1a2e; background: #1a1a2e; color: #e8d5b7; }
+        .toggle-btn { flex: 1; padding: 14px 12px; border-radius: 10px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; text-align: center; transition: all 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .toggle-btn.active { border-color: #B1C29E; background: #B1C29E; color: #FFFFFF; }
         .toggle-btn .label { font-size: 15px; font-weight: 600; }
         .toggle-btn .sublabel { font-size: 11px; margin-top: 2px; color: #aaa; }
-        .toggle-btn.active .sublabel { color: rgba(232,213,183,0.6); }
+        .toggle-btn.active .sublabel { color: rgba(255,255,255,0.6); }
 
         .toggle-row-sm { display: flex; gap: 6px; margin-bottom: 12px; }
-        .toggle-btn-sm { flex: 1; padding: 9px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: 'DM Sans', sans-serif; position: relative; }
-        .toggle-btn-sm.active { border-color: #1a1a2e; background: #1a1a2e; color: #e8d5b7; }
-        .toggle-btn-sm .tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8d5b7; font-size: 12px; font-weight: 400; padding: 8px 12px; border-radius: 8px; white-space: normal; width: 240px; text-align: center; line-height: 1.4; z-index: 100; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .toggle-btn-sm .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1a1a2e; }
+        .toggle-btn-sm { flex: 1; padding: 9px 12px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; color: #555; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: 'Plus Jakarta Sans', sans-serif; position: relative; }
+        .toggle-btn-sm.active { border-color: #B1C29E; background: #B1C29E; color: #FFFFFF; }
+        .toggle-btn-sm .tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #F0A04B; color: #FFFFFF; font-size: 12px; font-weight: 400; padding: 8px 12px; border-radius: 8px; white-space: normal; width: 240px; text-align: center; line-height: 1.4; z-index: 100; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .toggle-btn-sm .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #F0A04B; }
         .toggle-btn-sm:hover .tooltip { display: block; }
 
         .dropdown-wrapper { position: relative; margin-bottom: 12px; }
-        .dropdown-input { width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px; border: 2px solid #e0dbd2; font-size: 15px; outline: none; background: #fff; font-family: 'DM Sans', sans-serif; }
+        .dropdown-input { width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px; border: 2px solid #e0dbd2; font-size: 15px; outline: none; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; }
         .dropdown-clear { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #bbb; font-size: 18px; line-height: 1; background: none; border: none; display: none; }
         .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: #fff; border-radius: 0 0 10px 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-height: 220px; overflow-y: auto; border: 1px solid #e0dbd2; border-top: none; display: none; }
         .dropdown-list.open { display: block; }
@@ -47,22 +47,22 @@
         .dropdown-empty { padding: 12px 16px; color: #aaa; font-size: 13px; }
 
         .text-input-wrapper { margin-bottom: 12px; }
-        .text-input { width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px; border: 2px solid #e0dbd2; font-size: 15px; outline: none; background: #fff; font-family: 'DM Sans', sans-serif; }
+        .text-input { width: 100%; padding: 13px 40px 13px 16px; border-radius: 10px; border: 2px solid #e0dbd2; font-size: 15px; outline: none; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; }
         .text-clear { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #bbb; font-size: 18px; line-height: 1; background: none; border: none; }
 
-        .search-btn { width: 100%; padding: 13px 28px; border-radius: 10px; border: none; background: #1a1a2e; color: #e8d5b7; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; font-family: 'DM Sans', sans-serif; }
+        .search-btn { width: 100%; padding: 13px 28px; border-radius: 10px; border: none; background: #F0A04B; color: #FADA7A; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; font-family: 'Plus Jakarta Sans', sans-serif; }
         .search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .hint { font-size: 12px; color: #c9a96e; text-align: center; margin: 4px 0 0; }
 
         .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; margin-top: 24px; }
         .section-icon { font-size: 20px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
-        .section-title { font-weight: 700; font-size: 15px; color: #1a1a2e; }
+        .section-title { font-weight: 700; font-size: 15px; color: #F0A04B; }
         .section-count { font-size: 12px; color: #aaa; }
         .spinner { margin-left: auto; width: 18px; height: 18px; border: 2px solid #e0dbd2; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-        .result-card { display: flex; gap: 12px; background: #fff; border-radius: 8px; padding: 10px 12px; color: #1a1a2e; border: 1px solid #eee; transition: all 0.15s; margin-bottom: 6px; align-items: center; }
+        .result-card { display: flex; gap: 12px; background: #fff; border-radius: 8px; padding: 10px 12px; color: #F0A04B; border: 1px solid #eee; transition: all 0.15s; margin-bottom: 6px; align-items: center; }
         .result-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); border-color: #d0c9be; }
-        .result-card a { text-decoration: none; color: #1a1a2e; min-width: 0; flex: 1; }
+        .result-card a { text-decoration: none; color: #F0A04B; min-width: 0; flex: 1; }
         .result-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; line-height: 1.3; }
         .result-snippet { font-size: 12px; color: #888; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .result-url { font-size: 11px; color: #b0a890; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -70,17 +70,17 @@
 
         .save-btn { flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
         .save-btn.unsaved { background: #f8f5ef; color: #999; }
-        .save-btn.saved { background: #1a1a2e; color: #e8d5b7; }
+        .save-btn.saved { background: #F0A04B; color: #FADA7A; }
 
-        .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
         .clear-all-btn:hover { border-color: #ccc; color: #666; }
-        .share-btn { background: #1a1a2e; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #e8d5b7; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+        .share-btn { background: #F0A04B; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #FADA7A; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
         .share-btn:hover { background: #2a2a4e; }
         .shared-view { background: #fff; border-radius: 10px; border: 1px solid #e0dbd2; padding: 20px; margin-bottom: 16px; }
-        .shared-view h2 { font-family: 'Playfair Display', serif; font-size: 20px; color: #1a1a2e; margin-bottom: 4px; }
+        .shared-view h2 { font-family: 'Bitter', serif; font-size: 20px; color: #F0A04B; margin-bottom: 4px; }
         .shared-view .shared-meta { font-size: 12px; color: #aaa; margin-bottom: 16px; }
         .shared-view .shared-back { display: inline-block; margin-top: 16px; font-size: 13px; color: #c9a96e; text-decoration: none; font-weight: 600; }
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e8d5b7; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #F0A04B; color: #FADA7A; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 
         .saved-empty { text-align: center; padding: 24px 16px; background: #fff; border-radius: 8px; border: 1px solid #eee; }
         .saved-empty p { font-size: 13px; color: #aaa; margin: 0; }
@@ -95,9 +95,8 @@
 </head>
 <body>
     <div class="header">
-        <div style="font-size: 36px; margin-bottom: 8px;">🛍️</div>
-        <h1>ShopFinder UK</h1>
-        <p>Discover independent shops across the UK</p>
+        <h1>plaza</h1>
+        <p style="color:#FFFFFF;">Create your personal plaza. Discover and share your favourite places.</p>
     </div>
 
     <div class="container">
@@ -119,7 +118,7 @@
                         <div class="section-title" id="listTitle"></div>
                         <button id="editNameBtn" style="background:none;border:none;cursor:pointer;font-size:14px;color:#aaa;padding:2px;">✏️</button>
                     </div>
-                    <input type="text" id="listNameInput" class="hidden" style="font-weight:700;font-size:15px;color:#1a1a2e;border:1px solid #c9a96e;border-radius:6px;padding:4px 8px;width:100%;outline:none;box-sizing:border-box;" />
+                    <input type="text" id="listNameInput" class="hidden" style="font-weight:700;font-size:15px;color:#F0A04B;border:1px solid #c9a96e;border-radius:6px;padding:4px 8px;width:100%;outline:none;box-sizing:border-box;" />
                     <div class="section-count" id="listCount">0 places saved</div>
                 </div>
                 <button class="clear-all-btn hidden" id="clearListBtn">Clear all</button>
@@ -438,7 +437,7 @@
             return;
         }
 
-        var shareData = { title: l.name + " — ShopFinder UK", text: "Check out my ShopFinder list: " + l.name, url: shareUrl };
+        var shareData = { title: l.name + " — plaza", text: "Check out my plaza: " + l.name, url: shareUrl };
 
         if (navigator.share) {
             navigator.share(shareData).catch(function() {});
@@ -846,7 +845,7 @@
             isSearching = false;
             updateUI();
         } else {
-            resultsDiv.innerHTML = renderSectionHeader("🌐", "Online results", "#1a1a2e", "online") +
+            resultsDiv.innerHTML = renderSectionHeader("🌐", "Online results", "#F0A04B", "online") +
                 '<div id="results-online"></div>';
 
             var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
