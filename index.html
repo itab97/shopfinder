@@ -55,6 +55,7 @@
         .hint { font-size: 12px; color: #c9a96e; text-align: center; margin: 4px 0 0; }
 
         .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; margin-top: 24px; }
+        .awning-img { width: 100%; height: auto; display: block; margin-bottom: 6px; border-radius: 4px; }
         .section-icon { font-size: 20px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
         .section-title { font-weight: 700; font-size: 15px; color: #F0A04B; }
         .section-count { font-size: 12px; color: #aaa; }
@@ -364,7 +365,7 @@
         if (l.items.length === 0) {
             listItems.innerHTML = '<div class="saved-empty"><div style="font-size:28px;margin-bottom:8px;">☆</div><p>No saved places yet. Search for shops and tap ☆ to save them here.</p></div>';
         } else {
-            listItems.innerHTML = l.items.map(function(item) {
+            listItems.innerHTML = '<img src="shop_front.png" class="awning-img" alt="" />' + l.items.map(function(item) {
                 return renderCard(item, item.icon, true);
             }).join("");
             attachSaveButtons();
@@ -829,6 +830,7 @@
         if (shopType === "physical") {
             var searchLocation = selectedSubLocation || selectedLocation;
             resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(searchLocation), "#2ecc71", "physical") +
+                '<img src="shop_front.png" class="awning-img" alt="" />' +
                 '<div id="results-physical"></div>';
 
             var query = searchLocation + " " + term;
@@ -846,6 +848,7 @@
             updateUI();
         } else {
             resultsDiv.innerHTML = renderSectionHeader("🌐", "Online results", "#F0A04B", "online") +
+                '<img src="shop_front.png" class="awning-img" alt="" />' +
                 '<div id="results-online"></div>';
 
             var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
