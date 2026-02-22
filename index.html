@@ -166,7 +166,7 @@
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
                     <button class="toggle-btn-sm active" id="btnCategory">Category</button>
-                    <button class="toggle-btn-sm" id="btnName">Name<span class="tooltip">Write the name of a specific shop or restaurant, or paste the link to an online shop</span></button>
+                    <button class="toggle-btn-sm" id="btnName">Name<span class="tooltip">Write the name of a specific shop or restaurant</span></button>
                 </div>
             </div>
 
@@ -204,7 +204,7 @@
             </div>
         </div>
 
-        <p class="disclosure">As an Etsy &amp; Amazon Affiliate, we earn from qualifying purchases.</p>
+        <p class="disclosure">Results powered by Brave Search and Google Places.</p>
     </div>
     <div class="toast" id="toast"></div>
 
@@ -214,23 +214,8 @@
     // ========================================
     var GOOGLE_PLACES_API_KEY = "AIzaSyCsm5h-xdvVbeuYRIY3YEUoJiQIs3VDYdA";
     var WORKER_URL = "https://shopfinder-worker.shopfinder.workers.dev";
-    var AWIN_PUBLISHER_ID = "000000";
-    var AWIN_ETSY_ADVERTISER_ID = "6220";
-    var AMAZON_ASSOCIATE_ID = "YOUR-ASSOCIATE-ID-21"; // Replace with your Amazon Associate tag
     var RESULT_LIMIT = 10;
     var STORAGE_KEY = "shopfinder_lists";
-
-    function etsyAffiliateUrl(url) {
-        return "https://www.awin1.com/cread.php?awinmid=" + AWIN_ETSY_ADVERTISER_ID + "&awinaffid=" + AWIN_PUBLISHER_ID + "&ued=" + encodeURIComponent(url);
-    }
-
-    function amazonAffiliateUrl(url) {
-        try {
-            var u = new URL(url);
-            u.searchParams.set("tag", AMAZON_ASSOCIATE_ID);
-            return u.toString();
-        } catch(e) { return url; }
-    }
 
     var SHOP_CATEGORIES = {
         "Animals & Pets":"🐾","Arts and Crafts":"🎨","Beauty & Make-up":"💄",
@@ -310,8 +295,6 @@
     var isSearching = false;
     var activeList = -1; // -1 = none open
     var currentResults = [];
-    var currentEtsyResults = [];
-    var currentAmazonResults = [];
 
     // ========== DOM refs ==========
     var searchBtn = document.getElementById("searchBtn");
@@ -718,7 +701,7 @@
         } catch(e) { return []; }
     }
 
-    // ========== Worker → Brave Search — Etsy + Amazon ==========
+    // ========== Worker → Brave Search ==========
     async function searchWorker(query, limit) {
         limit = limit || RESULT_LIMIT;
         try {
@@ -799,8 +782,6 @@
         updateUI();
         emptyState.style.display = "none";
         currentResults = [];
-        currentEtsyResults = [];
-        currentAmazonResults = [];
 
         if (shopType === "physical") {
             resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(selectedLocation), "#2ecc71", "physical") +
@@ -820,56 +801,22 @@
             isSearching = false;
             updateUI();
         } else {
-            // Set up both sections with spinners
-            resultsDiv.innerHTML =
-                renderSectionHeader("🧶", "Etsy shops", "#f56400", "etsy") +
-                '<div id="results-etsy"></div>' +
-                renderSectionHeader("📦", "Amazon stores", "#ff9900", "amazon") +
-                '<div id="results-amazon"></div>';
+            resultsDiv.innerHTML = renderSectionHeader("🌐", "Online results", "#1a1a2e", "online") +
+                '<div id="results-online"></div>';
 
-            // Run both searches in parallel
-            var etsyDone = false, amazonDone = false;
-            function checkDone() {
-                if (etsyDone && amazonDone) {
-                    currentResults = currentEtsyResults.concat(currentAmazonResults);
-                    attachSaveButtons();
-                    isSearching = false;
-                    updateUI();
-                }
-            }
-
-            searchWorker("site:etsy.com/uk/shop " + term, RESULT_LIMIT).then(function(rawEtsy) {
-                var etsyResults = rawEtsy.map(function(item) {
-                    var url = item.url || "";
-                    var m = url.match(/etsy\.com(?:\/uk)?\/shop\/([A-Za-z0-9_]+)/);
-                    if (m) url = "https://www.etsy.com/uk/shop/" + m[1];
-                    return { name: (item.name || "").replace(/ \| Etsy.*$/i, "").replace(/ - Etsy.*$/i, "").trim(), snippet: item.snippet, displayUrl: url, url: etsyAffiliateUrl(url) };
-                });
-                currentEtsyResults = etsyResults;
-                updateSection("etsy", etsyResults.length);
-                document.getElementById("results-etsy").innerHTML = etsyResults.length > 0
-                    ? etsyResults.map(function(r) { return renderCard(r, null, false); }).join("")
-                    : '<p class="no-results">No Etsy shops found.</p>';
-                attachSaveButtons();
-                etsyDone = true;
-                checkDone();
+            var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
+            var onlineResults = raw.map(function(item) {
+                return { name: (item.name || "").trim(), snippet: item.snippet || "", displayUrl: item.url, url: item.url };
             });
+            currentResults = onlineResults;
+            updateSection("online", onlineResults.length);
+            document.getElementById("results-online").innerHTML = onlineResults.length > 0
+                ? onlineResults.map(function(r) { return renderCard(r, null, false); }).join("")
+                : '<p class="no-results">No results found. Try a different search.</p>';
 
-            searchWorker("site:amazon.co.uk/stores " + term, RESULT_LIMIT).then(function(rawAmazon) {
-                var amazonResults = rawAmazon
-                    .filter(function(item) { return /amazon\.co\.uk\/stores/.test(item.url || ""); })
-                    .map(function(item) {
-                        return { name: (item.name || "").replace(/^Amazon\.co\.uk\s*[:\-–]\s*/i, "").replace(/ - Amazon\.co\.uk$/i, "").replace(/ ?: ?Amazon\.co\.uk.*$/i, "").trim(), snippet: item.snippet, displayUrl: item.url, url: amazonAffiliateUrl(item.url) };
-                    });
-                currentAmazonResults = amazonResults;
-                updateSection("amazon", amazonResults.length);
-                document.getElementById("results-amazon").innerHTML = amazonResults.length > 0
-                    ? amazonResults.map(function(r) { return renderCard(r, null, false); }).join("")
-                    : '<p class="no-results">No Amazon stores found.</p>';
-                attachSaveButtons();
-                amazonDone = true;
-                checkDone();
-            });
+            attachSaveButtons();
+            isSearching = false;
+            updateUI();
         }
     });
 
