@@ -166,7 +166,7 @@
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
                     <button class="toggle-btn-sm active" id="btnCategory">Category</button>
-                    <button class="toggle-btn-sm" id="btnName">Name<span class="tooltip">Write the name of a specific shop or restaurant</span></button>
+                    <button class="toggle-btn-sm" id="btnName">Name<span class="tooltip">Write the name of a specific place or paste the link to an online shop</span></button>
                 </div>
             </div>
 
@@ -805,13 +805,14 @@
                 '<div id="results-online"></div>';
 
             var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
+            var icon = ALL_CATEGORY_ICONS[term] || "🛍️";
             var onlineResults = raw.map(function(item) {
                 return { name: (item.name || "").trim(), snippet: item.snippet || "", displayUrl: item.url, url: item.url };
             });
             currentResults = onlineResults;
             updateSection("online", onlineResults.length);
             document.getElementById("results-online").innerHTML = onlineResults.length > 0
-                ? onlineResults.map(function(r) { return renderCard(r, null, false); }).join("")
+                ? onlineResults.map(function(r) { return renderCard(r, icon, false); }).join("")
                 : '<p class="no-results">No results found. Try a different search.</p>';
 
             attachSaveButtons();
