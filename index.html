@@ -552,8 +552,8 @@
     function updateUI() {
         document.getElementById("locationWrapper").classList.toggle("hidden", shopType !== "physical");
         document.getElementById("searchModeWrapper").classList.toggle("hidden", !shopType);
-        document.getElementById("categoryTypeWrapper").classList.toggle("hidden", !shopType || searchMode !== "category");
-        document.getElementById("categoryWrapper").classList.toggle("hidden", !shopType || searchMode !== "category" || !categoryType);
+        document.getElementById("categoryTypeWrapper").classList.toggle("hidden", !shopType || shopType === "online" || searchMode !== "category");
+        document.getElementById("categoryWrapper").classList.toggle("hidden", !shopType || searchMode !== "category" || (!categoryType && shopType !== "online"));
         document.getElementById("nameWrapper").classList.toggle("hidden", !shopType || searchMode !== "name");
 
         document.getElementById("btnPhysical").classList.toggle("active", shopType === "physical");
@@ -575,8 +575,8 @@
     }
 
     // ========== Buttons ==========
-    document.getElementById("btnPhysical").addEventListener("click", function() { shopType = "physical"; updateUI(); });
-    document.getElementById("btnOnline").addEventListener("click", function() { shopType = "online"; updateUI(); });
+    document.getElementById("btnPhysical").addEventListener("click", function() { shopType = "physical"; categoryType = ""; selectedCategory = ""; document.getElementById("categoryInput").value = ""; document.getElementById("categoryClear").style.display = "none"; refreshCategoryDropdown(); updateUI(); });
+    document.getElementById("btnOnline").addEventListener("click", function() { shopType = "online"; categoryType = "shops"; selectedCategory = ""; document.getElementById("categoryInput").value = ""; document.getElementById("categoryClear").style.display = "none"; refreshCategoryDropdown(); updateUI(); });
     document.getElementById("btnCategory").addEventListener("click", function() { searchMode = "category"; updateUI(); });
     document.getElementById("btnName").addEventListener("click", function() { searchMode = "name"; updateUI(); });
     document.getElementById("btnShops").addEventListener("click", function() {
