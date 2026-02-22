@@ -162,6 +162,15 @@
                 <div class="dropdown-list" id="locationList"></div>
             </div>
 
+            <div class="dropdown-wrapper hidden" id="subLocationWrapper">
+                <label class="field-label">Area (optional)</label>
+                <div style="position:relative;">
+                    <input type="text" class="dropdown-input" id="subLocationInput" placeholder="Narrow to a specific area..." autocomplete="off" />
+                    <button class="dropdown-clear" id="subLocationClear">×</button>
+                </div>
+                <div class="dropdown-list" id="subLocationList"></div>
+            </div>
+
             <div class="hidden" id="searchModeWrapper">
                 <label class="field-label field-label-mb8">Search by</label>
                 <div class="toggle-row-sm">
@@ -231,19 +240,17 @@
     };
     var ALL_CATEGORY_ICONS = Object.assign({}, SHOP_CATEGORIES, FOOD_CATEGORIES);
     var UK_LOCATIONS = [
-        "Aberdeen","Bath","Belfast","Birmingham","Blackburn","Blackpool","Bolton","Bournemouth",
-        "Bradford","Brighton","Bristol","Burnley","Cambridge","Canterbury","Cardiff","Carlisle",
-        "Chelmsford","Cheltenham","Chester","Colchester","Coventry","Crawley","Darlington","Derby",
-        "Doncaster","Dover","Dundee","Durham","Edinburgh","Exeter","Glasgow","Gloucester",
-        "Grimsby","Guildford","Halifax","Harrogate","Huddersfield","Hull","Inverness","Ipswich",
-        "Keighley","Lancaster","Leeds","Leicester","Lincoln","Liverpool","London","Luton",
-        "Macclesfield","Manchester","Middlesbrough","Milton Keynes","Newcastle","Northampton",
-        "Norwich","Nottingham","Oldham","Oxford","Perth","Peterborough","Plymouth","Portsmouth",
-        "Preston","Reading","Rochdale","Rotherham","Saltaire","Scarborough","Sheffield","Shipley",
-        "Shrewsbury","Skipton","Southampton","Southend","St Albans","Stockport","Stoke-on-Trent",
-        "Sunderland","Swansea","Swindon","Taunton","Wakefield","Walsall","Warrington","Wigan",
-        "Winchester","Wolverhampton","Worcester","York"
+        "Belfast","Edinburgh","Glasgow","Newcastle upon Tyne","Leeds","Huddersfield",
+        "Bradford","Sheffield","Rotherham","Doncaster","Manchester","Blackpool",
+        "Liverpool","Chester","York","Scarborough","Hull","Nottingham","Birmingham",
+        "Stratford-upon-Avon","Oxford","Cambridge","Brighton","London","Bristol",
+        "Bath","Portsmouth"
     ];
+    var SUB_LOCATIONS = {
+        "Leeds": ["Headingley","Kirkstall","Harehills","Holbeck","Keighley"],
+        "Bradford": ["Saltaire","Shipley"],
+        "London": ["Camden Town","Wood Green","Hackney","Stratford","East Ham","Greenwich","Woolwich","Brixton","Wimbledon","Hammersmith","Kensington","Notting Hill"]
+    };
 
     // ========== Multi-list save system ==========
     var DEFAULT_LISTS = [
@@ -287,6 +294,7 @@
     var searchMode = "category";
     var categoryType = "";
     var selectedLocation = "";
+    var selectedSubLocation = "";
     var selectedCategory = "";
     var isSearching = false;
     var activeList = -1; // -1 = none open
@@ -529,6 +537,7 @@
     // ========== UI update ==========
     function updateUI() {
         document.getElementById("locationWrapper").classList.toggle("hidden", shopType !== "physical");
+        document.getElementById("subLocationWrapper").classList.toggle("hidden", shopType !== "physical" || !selectedLocation || !SUB_LOCATIONS[selectedLocation]);
         document.getElementById("searchModeWrapper").classList.toggle("hidden", !shopType);
         document.getElementById("categoryTypeWrapper").classList.toggle("hidden", !shopType || shopType === "online" || searchMode !== "category");
         document.getElementById("categoryWrapper").classList.toggle("hidden", !shopType || searchMode !== "category" || (!categoryType && shopType !== "online"));
@@ -615,8 +624,49 @@
 
     setupDropdown(
         document.getElementById("locationInput"), document.getElementById("locationList"), document.getElementById("locationClear"),
-        UK_LOCATIONS, function(val) { selectedLocation = val; }, function() { return selectedLocation; }
+        UK_LOCATIONS, function(val) { selectedLocation = val; selectedSubLocation = ""; document.getElementById("subLocationInput").value = ""; document.getElementById("subLocationClear").style.display = "none"; updateUI(); }, function() { return selectedLocation; }
     );
+
+    // Dynamic sub-location dropdown
+    var subInput = document.getElementById("subLocationInput");
+    var subList = document.getElementById("subLocationList");
+    var subClear = document.getElementById("subLocationClear");
+
+    function getSubItems() { return SUB_LOCATIONS[selectedLocation] || []; }
+
+    function renderSubList(filter) {
+        var items = getSubItems();
+        var f = (filter || "").toLowerCase();
+        var matched = items.filter(function(item) { return item.toLowerCase().indexOf(f) !== -1; });
+        if (matched.length === 0) {
+            subList.innerHTML = '<div class="dropdown-empty">No matches</div>';
+        } else {
+            subList.innerHTML = matched.map(function(item) {
+                return '<div class="dropdown-item">' + escapeHtml(item) + '</div>';
+            }).join("");
+            subList.querySelectorAll(".dropdown-item").forEach(function(el) {
+                el.addEventListener("mousedown", function(e) {
+                    e.preventDefault();
+                    selectedSubLocation = el.textContent;
+                    subInput.value = el.textContent;
+                    subClear.style.display = "block";
+                    subList.classList.remove("open");
+                    updateUI();
+                });
+            });
+        }
+    }
+
+    subInput.addEventListener("focus", function() { subInput.value = ""; renderSubList(""); subList.classList.add("open"); });
+    subInput.addEventListener("input", function() { renderSubList(subInput.value); subList.classList.add("open"); });
+    subInput.addEventListener("blur", function() {
+        setTimeout(function() {
+            subList.classList.remove("open");
+            if (selectedSubLocation) { subInput.value = selectedSubLocation; subClear.style.display = "block"; }
+            else { subInput.value = ""; subClear.style.display = "none"; }
+        }, 150);
+    });
+    subClear.addEventListener("click", function() { selectedSubLocation = ""; subInput.value = ""; subClear.style.display = "none"; updateUI(); });
 
     // Dynamic category dropdown — items change based on categoryType
     var catInput = document.getElementById("categoryInput");
@@ -778,10 +828,11 @@
         currentResults = [];
 
         if (shopType === "physical") {
-            resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(selectedLocation), "#2ecc71", "physical") +
+            var searchLocation = selectedSubLocation || selectedLocation;
+            resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(searchLocation), "#2ecc71", "physical") +
                 '<div id="results-physical"></div>';
 
-            var query = selectedLocation + " " + term;
+            var query = searchLocation + " " + term;
             var icon = ALL_CATEGORY_ICONS[term] || "🛍️";
             var raw = await searchPlaces(query, RESULT_LIMIT);
             var results = raw.map(function(r) { return { name: r.name, url: r.url, snippet: r.snippet, icon: icon }; });
