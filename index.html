@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>plaza</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>" />
     <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -316,6 +317,12 @@
         var div = document.createElement('div');
         div.appendChild(document.createTextNode(str || ""));
         return div.innerHTML;
+    }
+
+    function stripHtml(str) {
+        var div = document.createElement('div');
+        div.innerHTML = str || "";
+        return div.textContent || div.innerText || "";
     }
 
     function getSearchTerm() {
@@ -853,7 +860,7 @@
             var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
             var icon = ALL_CATEGORY_ICONS[term] || "🛍️";
             var onlineResults = raw.map(function(item) {
-                return { name: (item.name || "").trim(), snippet: item.snippet || "", displayUrl: item.url, url: item.url };
+                return { name: stripHtml((item.name || "").trim()), snippet: stripHtml(item.snippet || ""), displayUrl: item.url, url: item.url };
             });
             currentResults = onlineResults;
             updateSection("online", onlineResults.length);
