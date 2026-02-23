@@ -767,7 +767,7 @@
         var urlHtml = icon ? '' : '<div class="result-url">' + escapeHtml(r.displayUrl || r.url) + '</div>';
         var btnClass = itemSaved ? "save-btn saved" : "save-btn unsaved";
         var btnText = itemSaved ? "★" : "☆";
-        var dataAttr = 'data-card-name="' + escapeHtml(r.name) + '" data-card-url="' + escapeHtml(r.url) + '" data-card-snippet="' + escapeHtml(r.snippet || "") + '"';
+        var dataAttr = 'data-card-name="' + escapeHtml(r.name) + '" data-card-url="' + escapeHtml(r.url) + '" data-card-snippet="' + escapeHtml(r.snippet || "") + '" data-card-icon="' + escapeHtml(icon || "") + '"';
         if (isSavedCard) dataAttr += ' data-is-saved="1"';
 
         return '<div class="result-card">' +
@@ -788,7 +788,8 @@
                 var name = btn.getAttribute("data-card-name");
                 var url = btn.getAttribute("data-card-url");
                 var snippet = btn.getAttribute("data-card-snippet") || "";
-                var item = { name: name, url: url, snippet: snippet };
+                var icon = btn.getAttribute("data-card-icon") || null;
+                var item = { name: name, url: url, snippet: snippet, icon: icon };
                 if (isSavedItem(item)) {
                     removeFromAnyList(item);
                 } else {
@@ -830,7 +831,6 @@
         if (shopType === "physical") {
             var searchLocation = selectedSubLocation || selectedLocation;
             resultsDiv.innerHTML = renderSectionHeader("🏪", "Shops in " + escapeHtml(searchLocation), "#2ecc71", "physical") +
-                '<img src="shop_front.png" class="awning-img" alt="" />' +
                 '<div id="results-physical"></div>';
 
             var query = searchLocation + " " + term;
@@ -848,7 +848,6 @@
             updateUI();
         } else {
             resultsDiv.innerHTML = renderSectionHeader("🌐", "Online results", "#F0A04B", "online") +
-                '<img src="shop_front.png" class="awning-img" alt="" />' +
                 '<div id="results-online"></div>';
 
             var raw = await searchWorker(term + " UK shop", RESULT_LIMIT);
