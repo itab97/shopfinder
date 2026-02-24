@@ -79,7 +79,7 @@
         .share-btn { background: #F0A04B; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #FADA7A; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
         .share-btn:hover { background: #2a2a4e; }
         .shared-view { background: #fff; border-radius: 10px; border: 1px solid #e0dbd2; padding: 20px; margin-bottom: 16px; }
-        .shared-view h2 { font-family: 'Bitter', serif; font-size: 20px; color: #F0A04B; margin-bottom: 4px; }
+        .shared-view h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; color: #F0A04B; margin-bottom: 4px; }
         .shared-view .shared-meta { font-size: 12px; color: #aaa; margin-bottom: 16px; }
         .shared-view .shared-back { display: inline-block; margin-top: 16px; font-size: 13px; color: #c9a96e; text-decoration: none; font-weight: 600; }
         .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #F0A04B; color: #FADA7A; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
@@ -421,7 +421,7 @@
 
     // ========== Share list ==========
     function encodeListForShare(listObj) {
-        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "" }; }) };
+        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "", c: item.icon || "" }; }) };
         return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
     }
 
@@ -429,7 +429,7 @@
         try {
             var json = decodeURIComponent(escape(atob(encoded)));
             var d = JSON.parse(json);
-            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s }; }) };
+            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s, icon: item.c || "" }; }) };
         } catch(e) { return null; }
     }
 
@@ -483,8 +483,10 @@
         document.getElementById("sharedMeta").textContent = shared.items.length + " place" + (shared.items.length !== 1 ? "s" : "") + " shared with you";
 
         var sharedItemsDiv = document.getElementById("sharedItems");
-        sharedItemsDiv.innerHTML = shared.items.map(function(item) {
+        sharedItemsDiv.innerHTML = '<img src="shop_front.png" class="awning-img" alt="" />' + shared.items.map(function(item) {
+            var iconHtml = item.icon ? '<div class="category-icon">' + item.icon + '</div>' : '';
             return '<div class="result-card">' +
+                iconHtml +
                 '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
                     '<div class="result-name">' + escapeHtml(item.name) + '</div>' +
                     '<div class="result-snippet">' + escapeHtml(item.snippet) + '</div>' +
