@@ -479,29 +479,34 @@
         } catch(e) { /* fall back to long URL */ }
 
         var shareHtml = 'Check out my plaza: <a href="' + shareUrl + '">' + escapeHtml(l.name) + '</a>';
-        var sharePlain = "Check out my plaza: " + l.name + " " + shareUrl;
+        var sharePlain = "Check out my plaza: " + l.name + "\n" + shareUrl;
 
-        var container = document.createElement("div");
-        container.innerHTML = shareHtml;
-        container.style.position = "fixed";
-        container.style.left = "-9999px";
-        container.style.opacity = "0";
-        document.body.appendChild(container);
-        var range = document.createRange();
-        range.selectNodeContents(container);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        try {
-            document.execCommand("copy");
-            showToast("Link copied to clipboard!");
-        } catch(e) {
-            navigator.clipboard.writeText(sharePlain).then(function() {
+        if (navigator.clipboard && navigator.clipboard.write) {
+            try {
+                var htmlBlob = new Blob([shareHtml], { type: "text/html" });
+                var textBlob = new Blob([sharePlain], { type: "text/plain" });
+                await navigator.clipboard.write([new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob })]);
                 showToast("Link copied to clipboard!");
-            });
+            } catch(e) {
+                try {
+                    await navigator.clipboard.writeText(sharePlain);
+                    showToast("Link copied to clipboard!");
+                } catch(e2) { showToast("Could not copy link"); }
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(sharePlain);
+                showToast("Link copied to clipboard!");
+            } catch(e) {
+                var tmp = document.createElement("input");
+                tmp.value = sharePlain;
+                document.body.appendChild(tmp);
+                tmp.select();
+                document.execCommand("copy");
+                document.body.removeChild(tmp);
+                showToast("Link copied to clipboard!");
+            }
         }
-        sel.removeAllRanges();
-        document.body.removeChild(container);
     });
 
     // ========== Shared view (for recipients) ==========
