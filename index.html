@@ -82,6 +82,15 @@
         .reaction-btn:hover .reaction-tooltip { display: block; }
         .reaction-badge { width: 32px; height: 32px; border-radius: 8px; background: #FFF3E0; border: 2px solid #F0A04B; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
 
+        .result-card-wrap { margin-bottom: 6px; }
+        .result-card-wrap .result-card { margin-bottom: 0; }
+        .note-row { display: flex; align-items: center; gap: 6px; padding: 4px 12px 8px; }
+        .note-input { flex: 1; border: none; border-bottom: 1px solid #e0dbd2; background: transparent; font-size: 12px; color: #888; font-family: 'Plus Jakarta Sans', sans-serif; padding: 4px 0; outline: none; }
+        .note-input:focus { border-bottom-color: #F0A04B; color: #555; }
+        .note-input::placeholder { color: #ccc; }
+        .note-count { font-size: 10px; color: #ccc; flex-shrink: 0; }
+        .shared-note { font-size: 12px; color: #888; padding: 2px 12px 8px; font-family: 'Plus Jakarta Sans', sans-serif; }
+
         .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
         .clear-all-btn:hover { border-color: #ccc; color: #666; }
         .share-btn { background: #F0A04B; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #FADA7A; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
@@ -286,7 +295,7 @@
     function addToList(listIdx, item) {
         var l = lists[listIdx];
         if (!l.items.some(function(s) { return s.name === item.name && s.url === item.url; })) {
-            l.items.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, reaction: null, savedAt: Date.now() });
+            l.items.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, reaction: null, note: "", savedAt: Date.now() });
         }
         persistLists(); refreshListButtons(); refreshResultSaveButtons();
     }
@@ -431,7 +440,7 @@
 
     // ========== Share list ==========
     function encodeListForShare(listObj) {
-        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "", c: item.icon || "", r: item.reaction || "" }; }) };
+        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "", c: item.icon || "", r: item.reaction || "", t: item.note || "" }; }) };
         return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
     }
 
@@ -439,7 +448,7 @@
         try {
             var json = decodeURIComponent(escape(atob(encoded)));
             var d = JSON.parse(json);
-            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s, icon: item.c || "", reaction: item.r || "" }; }) };
+            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s, icon: item.c || "", reaction: item.r || "", note: item.t || "" }; }) };
         } catch(e) { return null; }
     }
 
@@ -498,12 +507,13 @@
             var reactionHtml = '';
             if (item.reaction === "curious") reactionHtml = '<div class="reaction-badge">❓</div>';
             else if (item.reaction === "favourite") reactionHtml = '<div class="reaction-badge">❤️</div>';
-            return '<div class="result-card">' +
+            var noteHtml = item.note ? '<div class="shared-note">📝 ' + escapeHtml(item.note) + '</div>' : '';
+            return '<div class="result-card-wrap"><div class="result-card">' +
                 iconHtml +
                 '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
                     '<div class="result-name">' + escapeHtml(item.name) + '</div>' +
                     '<div class="result-snippet">' + escapeHtml(item.snippet) + '</div>' +
-                '</a>' + reactionHtml + '</div>';
+                '</a>' + reactionHtml + '</div>' + noteHtml + '</div>';
         }).join("");
 
         return true;
@@ -805,7 +815,17 @@
             '</div>';
         }
 
-        return '<div class="result-card">' +
+        var noteHtml = '';
+        if (isSavedCard) {
+            var curNote = r.note || "";
+            noteHtml = '<div class="note-row">' +
+                '<input class="note-input" type="text" maxlength="50" placeholder="Add a note..." value="' + escapeHtml(curNote) + '" ' + dataAttr + ' />' +
+                '<span class="note-count">' + curNote.length + '/50</span>' +
+            '</div>';
+        }
+
+        return '<div class="result-card-wrap">' +
+        '<div class="result-card">' +
             iconHtml +
             '<a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener noreferrer">' +
                 '<div class="result-name">' + escapeHtml(r.name) + '</div>' +
@@ -814,6 +834,8 @@
             '</a>' +
             reactionHtml +
             '<button class="' + btnClass + '" ' + dataAttr + ' title="' + (itemSaved ? "Remove from saved" : "Save this shop") + '">' + btnText + '</button>' +
+        '</div>' +
+        noteHtml +
         '</div>';
     }
 
@@ -857,6 +879,29 @@
                 setReaction(name, url, reaction);
             };
         });
+        document.querySelectorAll(".note-input").forEach(function(input) {
+            input.oninput = function() {
+                var count = input.parentElement.querySelector(".note-count");
+                if (count) count.textContent = input.value.length + "/50";
+            };
+            input.onblur = function() {
+                var name = input.getAttribute("data-card-name");
+                var url = input.getAttribute("data-card-url");
+                setNote(name, url, input.value.slice(0, 50));
+            };
+            input.onkeydown = function(e) { if (e.key === "Enter") input.blur(); };
+        });
+    }
+
+    function setNote(name, url, note) {
+        lists.forEach(function(l) {
+            l.items.forEach(function(s) {
+                if (s.name === name && s.url === url) {
+                    s.note = note || "";
+                }
+            });
+        });
+        persistLists();
     }
 
     function renderSectionHeader(icon, title, color, id) {
