@@ -468,9 +468,7 @@
         var shareHtml = 'Check out my plaza: <a href="' + shareUrl + '">' + escapeHtml(l.name) + '</a>';
         var sharePlain = "Check out my plaza: " + l.name + " " + shareUrl;
 
-        if (navigator.share) {
-            navigator.share(shareData).catch(function() {});
-        } else if (navigator.clipboard && navigator.clipboard.write) {
+        if (navigator.clipboard && navigator.clipboard.write) {
             var htmlBlob = new Blob([shareHtml], { type: "text/html" });
             var textBlob = new Blob([sharePlain], { type: "text/plain" });
             navigator.clipboard.write([new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob })]).then(function() {
@@ -480,6 +478,8 @@
                     showToast("Link copied to clipboard!");
                 });
             });
+        } else if (navigator.share) {
+            navigator.share(shareData).catch(function() {});
         } else {
             navigator.clipboard.writeText(sharePlain).then(function() {
                 showToast("Link copied to clipboard!");
