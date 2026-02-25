@@ -452,47 +452,56 @@
         } catch(e) { return null; }
     }
 
-    document.getElementById("shareListBtn").addEventListener("click", function() {
+    document.getElementById("shareListBtn").addEventListener("click", async function() {
         if (activeList < 0) return;
         var l = lists[activeList];
         var encoded = encodeListForShare(l);
         var baseUrl = window.location.origin + window.location.pathname;
-        var shareUrl = baseUrl + "#shared=" + encoded;
+        var longUrl = baseUrl + "#shared=" + encoded;
 
-        if (shareUrl.length > 8000) {
+        if (longUrl.length > 8000) {
             showToast("List is too large to share via link. Try removing some items.");
             return;
         }
 
-        var shareData = { title: l.name + " — my plaza", text: "Check out my plaza: " + l.name, url: shareUrl };
+        showToast("Creating share link...");
+
+        // Try to shorten
+        var shareUrl = longUrl;
+        try {
+            var res = await fetch(WORKER_URL.replace(/\/$/, "") + "/shorten", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hash: encoded })
+            });
+            var data = await res.json();
+            if (data.url) shareUrl = data.url;
+        } catch(e) { /* fall back to long URL */ }
+
         var shareHtml = 'Check out my plaza: <a href="' + shareUrl + '">' + escapeHtml(l.name) + '</a>';
         var sharePlain = "Check out my plaza: " + l.name + " " + shareUrl;
 
-        if (navigator.clipboard && navigator.clipboard.write) {
-            var htmlBlob = new Blob([shareHtml], { type: "text/html" });
-            var textBlob = new Blob([sharePlain], { type: "text/plain" });
-            navigator.clipboard.write([new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob })]).then(function() {
-                showToast("Link copied to clipboard!");
-            }).catch(function() {
-                navigator.clipboard.writeText(sharePlain).then(function() {
-                    showToast("Link copied to clipboard!");
-                });
-            });
-        } else if (navigator.share) {
-            navigator.share(shareData).catch(function() {});
-        } else {
+        var container = document.createElement("div");
+        container.innerHTML = shareHtml;
+        container.style.position = "fixed";
+        container.style.left = "-9999px";
+        container.style.opacity = "0";
+        document.body.appendChild(container);
+        var range = document.createRange();
+        range.selectNodeContents(container);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try {
+            document.execCommand("copy");
+            showToast("Link copied to clipboard!");
+        } catch(e) {
             navigator.clipboard.writeText(sharePlain).then(function() {
-                showToast("Link copied to clipboard!");
-            }).catch(function() {
-                var tmp = document.createElement("input");
-                tmp.value = sharePlain;
-                document.body.appendChild(tmp);
-                tmp.select();
-                document.execCommand("copy");
-                document.body.removeChild(tmp);
                 showToast("Link copied to clipboard!");
             });
         }
+        sel.removeAllRanges();
+        document.body.removeChild(container);
     });
 
     // ========== Shared view (for recipients) ==========
