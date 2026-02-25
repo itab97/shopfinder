@@ -74,6 +74,14 @@
         .save-btn.unsaved { background: #f8f5ef; color: #999; }
         .save-btn.saved { background: #F0A04B; color: #FADA7A; }
 
+        .reaction-wrap { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+        .reaction-btn { position: relative; width: 32px; height: 32px; border-radius: 8px; border: 2px solid #e0dbd2; background: #fff; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; }
+        .reaction-btn.selected { border-color: #F0A04B; background: #FFF3E0; }
+        .reaction-btn .reaction-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #F0A04B; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; pointer-events: none; z-index: 99; }
+        .reaction-btn .reaction-tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #F0A04B; }
+        .reaction-btn:hover .reaction-tooltip { display: block; }
+        .reaction-badge { width: 32px; height: 32px; border-radius: 8px; background: #FFF3E0; border: 2px solid #F0A04B; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+
         .clear-all-btn { background: none; border: 1px solid #e0dbd2; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #999; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
         .clear-all-btn:hover { border-color: #ccc; color: #666; }
         .share-btn { background: #F0A04B; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #FADA7A; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
@@ -278,7 +286,7 @@
     function addToList(listIdx, item) {
         var l = lists[listIdx];
         if (!l.items.some(function(s) { return s.name === item.name && s.url === item.url; })) {
-            l.items.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, savedAt: Date.now() });
+            l.items.push({ name: item.name, url: item.url, snippet: item.snippet, icon: item.icon || null, reaction: null, savedAt: Date.now() });
         }
         persistLists(); refreshListButtons(); refreshResultSaveButtons();
     }
@@ -423,7 +431,7 @@
 
     // ========== Share list ==========
     function encodeListForShare(listObj) {
-        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "", c: item.icon || "" }; }) };
+        var compact = { n: listObj.name, i: listObj.items.map(function(item) { return { n: item.name, u: item.url, s: item.snippet || "", c: item.icon || "", r: item.reaction || "" }; }) };
         return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
     }
 
@@ -431,7 +439,7 @@
         try {
             var json = decodeURIComponent(escape(atob(encoded)));
             var d = JSON.parse(json);
-            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s, icon: item.c || "" }; }) };
+            return { name: d.n, items: d.i.map(function(item) { return { name: item.n, url: item.u, snippet: item.s, icon: item.c || "", reaction: item.r || "" }; }) };
         } catch(e) { return null; }
     }
 
@@ -487,12 +495,15 @@
         var sharedItemsDiv = document.getElementById("sharedItems");
         sharedItemsDiv.innerHTML = '<img src="shop_front.png" class="awning-img" alt="" />' + shared.items.map(function(item) {
             var iconHtml = item.icon ? '<div class="category-icon">' + item.icon + '</div>' : '';
+            var reactionHtml = '';
+            if (item.reaction === "curious") reactionHtml = '<div class="reaction-badge">❓</div>';
+            else if (item.reaction === "favourite") reactionHtml = '<div class="reaction-badge">❤️</div>';
             return '<div class="result-card">' +
                 iconHtml +
                 '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
                     '<div class="result-name">' + escapeHtml(item.name) + '</div>' +
                     '<div class="result-snippet">' + escapeHtml(item.snippet) + '</div>' +
-                '</a></div>';
+                '</a>' + reactionHtml + '</div>';
         }).join("");
 
         return true;
@@ -781,6 +792,19 @@
         var dataAttr = 'data-card-name="' + escapeHtml(r.name) + '" data-card-url="' + escapeHtml(r.url) + '" data-card-snippet="' + escapeHtml(r.snippet || "") + '" data-card-icon="' + escapeHtml(icon || "") + '"';
         if (isSavedCard) dataAttr += ' data-is-saved="1"';
 
+        var reactionHtml = '';
+        if (isSavedCard) {
+            var curReaction = r.reaction || "";
+            reactionHtml = '<div class="reaction-wrap">' +
+                '<button class="reaction-btn' + (curReaction === "curious" ? " selected" : "") + '" data-reaction="curious" ' + dataAttr + '>' +
+                    '❓<span class="reaction-tooltip">I\'m curious</span>' +
+                '</button>' +
+                '<button class="reaction-btn' + (curReaction === "favourite" ? " selected" : "") + '" data-reaction="favourite" ' + dataAttr + '>' +
+                    '❤️<span class="reaction-tooltip">My favourite</span>' +
+                '</button>' +
+            '</div>';
+        }
+
         return '<div class="result-card">' +
             iconHtml +
             '<a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener noreferrer">' +
@@ -788,6 +812,7 @@
                 '<div class="result-snippet">' + escapeHtml(r.snippet) + '</div>' +
                 urlHtml +
             '</a>' +
+            reactionHtml +
             '<button class="' + btnClass + '" ' + dataAttr + ' title="' + (itemSaved ? "Remove from saved" : "Save this shop") + '">' + btnText + '</button>' +
         '</div>';
     }
@@ -806,6 +831,30 @@
                 } else {
                     showSavePopup(item, btn);
                 }
+            };
+        });
+        attachReactionButtons();
+    }
+
+    function setReaction(name, url, reaction) {
+        lists.forEach(function(l) {
+            l.items.forEach(function(s) {
+                if (s.name === name && s.url === url) {
+                    s.reaction = s.reaction === reaction ? null : reaction;
+                }
+            });
+        });
+        persistLists(); refreshListPanel();
+    }
+
+    function attachReactionButtons() {
+        document.querySelectorAll(".reaction-btn").forEach(function(btn) {
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                var name = btn.getAttribute("data-card-name");
+                var url = btn.getAttribute("data-card-url");
+                var reaction = btn.getAttribute("data-reaction");
+                setReaction(name, url, reaction);
             };
         });
     }
